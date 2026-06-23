@@ -1,0 +1,46 @@
+version: '3.8'
+
+# ============================================================
+# Ambiente de HOMOLOGAÇÃO — roda em paralelo com produção
+# Backend:  http://localhost:8010
+# Frontend: http://localhost:8090
+# ============================================================
+
+services:
+
+  backend-homolog:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: blackd-backend-homolog
+    ports:
+      - "8010:8000"
+    env_file:
+      - .env.homolog
+    volumes:
+      - ./backend/uploads_homolog:/app/uploads
+      - ./backend/cred.json:/app/cred.json
+      - ./backend/projeto-rpa-blackd-2023-16b15891f73c.json:/app/google_credentials.json:ro
+    restart: unless-stopped
+    networks:
+      - homolog-network
+
+  frontend-homolog:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: blackd-frontend-homolog
+    ports:
+      - "8090:80"
+    volumes:
+      # Substitui o nginx.conf padrão pelo de homolog em runtime
+      - ./frontend/nginx.homolog.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - backend-homolog
+    restart: unless-stopped
+    networks:
+      - homolog-network
+
+networks:
+  homolog-network:
+    driver: bridge

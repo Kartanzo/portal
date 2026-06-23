@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <!-- dark mode init: aplica classe antes do React montar (evita flash) -->
+  <script>if(localStorage.getItem('blackd_dark_mode')==='true')document.documentElement.classList.add('dark');</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3LACKD - Portal de Planejamento e Dados</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* Dark mode: cores de fonte globais */
+    .dark .text-gray-900:not(.text-transparent),
+    .dark .text-gray-800:not(.text-transparent),
+    .dark .text-gray-700:not(.text-transparent) { color: #f1f5f9; }
+    .dark .text-gray-600:not(.text-transparent),
+    .dark .text-gray-500:not(.text-transparent) { color: #cbd5e1; }
+    .dark .text-gray-400:not(.text-transparent) { color: #94a3b8; }
+    .dark .text-slate-900:not(.text-transparent),
+    .dark .text-slate-800:not(.text-transparent),
+    .dark .text-slate-700:not(.text-transparent) { color: #f1f5f9; }
+    .dark .text-slate-600:not(.text-transparent),
+    .dark .text-slate-500:not(.text-transparent) { color: #cbd5e1; }
+    .dark .text-slate-400:not(.text-transparent) { color: #94a3b8; }
+
+    /* ── Dark mode global ── */
+    /* Inputs */
+    .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    .dark textarea,
+    .dark select {
+      background-color: #1e293b !important;
+      color: #f1f5f9 !important;
+      border-color: #475569 !important;
+    }
+    /* Fundos brancos genéricos → escuro (paleta deep, próxima de preto puro) */
+    .dark .bg-white { background-color: #0f172a !important; }
+    .dark .bg-gray-50 { background-color: #020617 !important; }
+    .dark .bg-gray-100 { background-color: #0f172a !important; }
+    .dark .bg-slate-50 { background-color: #020617 !important; }
+    .dark .bg-slate-100 { background-color: #0f172a !important; }
+    /* Textos escuros → claros */
+    .dark .text-gray-900, .dark .text-gray-900 * { color: #f1f5f9 !important; }
+    .dark .text-gray-800 { color: #e2e8f0 !important; }
+    .dark .text-gray-700 { color: #cbd5e1 !important; }
+    .dark .text-gray-600 { color: #94a3b8 !important; }
+    .dark .text-gray-500 { color: #94a3b8 !important; }
+    .dark .text-gray-400 { color: #64748b !important; }
+    .dark .text-slate-900 { color: #f1f5f9 !important; }
+    .dark .text-slate-800 { color: #e2e8f0 !important; }
+    .dark .text-slate-700 { color: #cbd5e1 !important; }
+    .dark .text-slate-600 { color: #94a3b8 !important; }
+    .dark .text-slate-500 { color: #94a3b8 !important; }
+    /* Bordas */
+    .dark .border-gray-100 { border-color: #334155 !important; }
+    .dark .border-gray-200 { border-color: #334155 !important; }
+    .dark .border-slate-100 { border-color: #334155 !important; }
+    .dark .border-slate-200 { border-color: #475569 !important; }
+    /* Divisores */
+    .dark .divide-gray-100 > * + * { border-color: #334155 !important; }
+    .dark .divide-gray-200 > * + * { border-color: #334155 !important; }
+    /* Tabela */
+    .dark table { color: #e2e8f0; }
+    .dark thead tr { background-color: #020617 !important; color: #94a3b8 !important; }
+    .dark tbody tr:hover { background-color: #1e3a5f22 !important; }
+    /* Badges claros em dark */
+    .dark .bg-slate-100 { background-color: #1e293b !important; }
+    /* Hover rows */
+    .dark tr:hover td { background-color: #1e3a5f33 !important; }
+    /* Shadow cards */
+    .dark .shadow, .dark .shadow-sm, .dark .shadow-md { box-shadow: 0 1px 6px rgba(0,0,0,0.4) !important; }
+    /* Placeholder */
+    .dark ::placeholder { color: #475569 !important; }
+    /* Labels */
+    .dark label { color: #94a3b8; }
+    .dark option {
+      background-color: #1e293b;
+      color: #f1f5f9;
+    }
+    /* Botões com fundo branco explícito mantêm texto escuro */
+    .dark button.bg-white { color: #0f172a !important; }
+    /* Botões sem fundo explícito (fundo herdado escuro) ficam com texto claro */
+    .dark button:not([class*="bg-"]) { color: #f1f5f9; }
+
+    /* Dropdowns customizados (div absolute/z com bg-white) ficam escuros */
+    .dark div.absolute.bg-white,
+    .dark div.fixed.bg-white {
+      background-color: #1e293b !important;
+      border-color: #475569 !important;
+    }
+    .dark div.absolute.bg-white *,
+    .dark div.fixed.bg-white * { color: #f1f5f9 !important; }
+    /* Input dentro do dropdown customizado */
+    .dark div.absolute.bg-white input,
+    .dark div.fixed.bg-white input {
+      background-color: #0f172a !important;
+      color: #f1f5f9 !important;
+      border-color: #475569 !important;
+    }
+
+    /* Light mode: profundidade e divisões visíveis nos cards */
+    .bg-white.rounded-2xl {
+      border-color: #e2e8f0 !important;
+      box-shadow: 0 4px 16px -2px rgba(0,0,0,0.10), 0 2px 6px -1px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.9) !important;
+    }
+    .bg-white.rounded-xl {
+      border-color: #e2e8f0 !important;
+      box-shadow: 0 3px 10px -2px rgba(0,0,0,0.09), 0 1px 4px -1px rgba(0,0,0,0.06) !important;
+    }
+    .bg-gray-50.rounded-xl {
+      border-color: #e2e8f0 !important;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.04) !important;
+    }
+
+    /* DARK_MODE_TEST — eclipse transition */
+    ::view-transition-old(root) { animation: none; mix-blend-mode: normal; }
+    ::view-transition-new(root) {
+      animation: vt-eclipse 4s cubic-bezier(0.25, 0.1, 0.25, 1);
+      mix-blend-mode: normal;
+    }
+    @keyframes vt-eclipse {
+      from { clip-path: circle(0% at var(--vt-x, 50%) var(--vt-y, 50%)); }
+      to   { clip-path: circle(160% at var(--vt-x, 50%) var(--vt-y, 50%)); }
+    }
+  </style>
+  <style>
+    body {
+      font-family: 'Inter', 'Helvetica', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-feature-settings: 'cv11', 'ss01';
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .bg-geometric {
+      background: linear-gradient(135deg, #1a0505 0%, #4a0404 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bg-geometric::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
+      opacity: 0.1;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3b82f6;
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2563eb;
+    }
+  </style>
+
+  <link rel="stylesheet" href="/index.css?v=20">
+  <!-- Dark mode overrides: DEVE vir depois do index.css para ganhar em cascata -->
+  <style id="dark-overrides">
+    /* Fundos (paleta deep, próxima de preto puro) */
+    html.dark .bg-white { background-color: #0f172a !important; }
+    html.dark .bg-gray-50 { background-color: #020617 !important; }
+    html.dark .bg-gray-100 { background-color: #0f172a !important; }
+    html.dark .bg-slate-50 { background-color: #020617 !important; }
+    html.dark .bg-slate-100 { background-color: #0f172a !important; }
+    html.dark .bg-white\/95 { background-color: rgba(2,6,23,0.95) !important; }
+    /* Textos */
+    html.dark .text-gray-900 { color: #f1f5f9 !important; }
+    html.dark .text-gray-800 { color: #e2e8f0 !important; }
+    html.dark .text-gray-700 { color: #cbd5e1 !important; }
+    html.dark .text-gray-600 { color: #94a3b8 !important; }
+    html.dark .text-gray-500 { color: #94a3b8 !important; }
+    html.dark .text-gray-400 { color: #64748b !important; }
+    html.dark .text-slate-900 { color: #f1f5f9 !important; }
+    html.dark .text-slate-800 { color: #e2e8f0 !important; }
+    html.dark .text-slate-700 { color: #cbd5e1 !important; }
+    html.dark .text-slate-600 { color: #94a3b8 !important; }
+    html.dark .text-slate-500 { color: #94a3b8 !important; }
+    /* Bordas */
+    html.dark .border-gray-100,
+    html.dark .border-gray-200,
+    html.dark .border-slate-100,
+    html.dark .border-slate-200 { border-color: #334155 !important; }
+    /* Divisores */
+    html.dark .divide-gray-100 > * + *,
+    html.dark .divide-gray-200 > * + * { border-color: #334155 !important; }
+    /* Tabelas */
+    html.dark thead tr { background-color: #020617 !important; }
+    html.dark thead th { color: #94a3b8 !important; }
+    html.dark tbody { background-color: #0f172a !important; }
+    html.dark tbody tr { background-color: #0f172a !important; }
+    html.dark tbody tr:hover td { background-color: rgba(30,58,95,0.3) !important; }
+    /* Inputs */
+    html.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    html.dark textarea,
+    html.dark select {
+      background-color: #0f172a !important;
+      color: #f1f5f9 !important;
+      border-color: #334155 !important;
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+  <div id="root"></div>
+  <script type="module" src="/src/index.tsx"></script>
+</body>
+
+</html>

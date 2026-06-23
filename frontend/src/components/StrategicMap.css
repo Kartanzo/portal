@@ -1,0 +1,83 @@
+.strategic-map-container {
+    width: 1350px;
+    height: 800px;
+}
+
+.map-box {
+    display: flex;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 11px;
+    text-align: center;
+    padding: 8px 12px;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    border-radius: 10px;
+}
+
+.map-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.flex-box {
+    align-items: center;
+}
+
+/* Background Colors */
+.bg-fin {
+    background-color: #83229b;
+}
+
+.bg-cli {
+    background-color: #ef5a24;
+}
+
+.bg-pip {
+    background-color: #1da0cc;
+}
+
+.bg-pac {
+    background-color: #ea0061;
+}
+
+/* Specific dimensions for boxes in different lanes */
+.box-fin {
+    width: 200px;
+    height: 75px;
+}
+
+.box-pac {
+    width: 140px;
+    height: 75px;
+}
+
+/* Grid for CLI */
+.grid-cli {
+    display: grid;
+    grid-template-columns: repeat(10, 105px);
+    grid-template-rows: 1fr 1fr;
+    gap: 25px 15px;
+    justify-content: center;
+}
+
+.grid-cli .map-box {
+    width: 105px;
+    height: 75px;
+}
+
+/* Grid for PIP */
+.grid-pip {
+    display: grid;
+    grid-template-columns: repeat(13, 90px);
+    grid-template-rows: 1fr 1fr;
+    gap: 25px 10px;
+    justify-content: center;
+}
+
+.grid-pip .map-box {
+    width: 90px;
+    height: 75px;
+}

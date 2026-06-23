@@ -1,0 +1,628 @@
+[
+  {
+    "role": "admin",
+    "permissions": {
+      "dashboard": {
+        "can_view": true
+      },
+      "tickets": {
+        "can_view": true
+      },
+      "sector_info": {
+        "can_view": true
+      },
+      "schedule": {
+        "can_view": true
+      },
+      "action_plan_dashboard": {
+        "can_view": false
+      },
+      "action_plans": {
+        "can_view": false
+      },
+      "strategic_timeline": {
+        "can_view": false
+      },
+      "strategic_kanban": {
+        "can_view": false
+      },
+      "impl_dashboard": {
+        "can_view": false
+      },
+      "impl_action_plan": {
+        "can_view": false
+      },
+      "impl_kanban": {
+        "can_view": false
+      },
+      "impl_timeline": {
+        "can_view": false
+      },
+      "financeiro_base_orcado": {
+        "can_view": true,
+        "allowed_sectors": [
+          "Financeiro"
+        ]
+      },
+      "financeiro_base_realizado": {
+        "can_view": true,
+        "allowed_sectors": [
+          "Financeiro"
+        ]
+      },
+      "financeiro_orcado": {
+        "can_view": true,
+        "allowed_sectors": [
+          "Financeiro"
+        ]
+      },
+      "financeiro_orcado_realizado": {
+        "can_view": true,
+        "allowed_sectors": [
+          "Financeiro"
+        ]
+      },
+      "financeiro_dre": {
+        "can_view": true,
+        "allowed_sectors": [
+          "Financeiro"
+        ]
+      },
+      "financeiro_plano_contas": {
+        "can_view": true,
+        "allowed_sectors": [
+          "Financeiro"
+        ]
+      },
+      "financeiro_dre2025": {
+        "can_view": false
+      },
+      "ticket_categories_management": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "sac": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "sac_dashboard": {
+        "can_view": true
+      },
+      "metas_faturamento": {
+        "can_view": false
+      },
+      "sop_dashboard": {
+        "can_view": false
+      },
+      "plano_producao": {
+        "can_view": false
+      },
+      "otimizador_faturamento": {
+        "can_view": false
+      },
+      "whatsapp_numeros_autorizados": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "importation_v2": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_dashboard": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_colaboradores": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_recrutamento": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_documentos": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_jornada": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_movimentacoes": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_aprovacoes": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_config": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_equipamentos": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "simulador_importacao": {
+        "can_view": true
+      },
+      "cadastro_maquinas": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "programacao": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "eventos_album": {
+        "can_view": false
+      },
+      "eventos_admin": {
+        "can_view": false
+      },
+      "catalogo_view": {
+        "can_view": false
+      },
+      "catalogo_admin": {
+        "can_view": false
+      },
+      "financeiro_comissao": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "financeiro_analise_credito": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "marketing_ficha_tecnica": {
+        "can_view": false
+      },
+      "ficha_tecnica_catalogo": {
+        "can_view": false
+      }
+    }
+  },
+  {
+    "role": "user",
+    "permissions": {
+      "dashboard": {
+        "can_view": true
+      },
+      "tickets": {
+        "can_view": true
+      },
+      "sector_info": {
+        "can_view": true
+      },
+      "schedule": {
+        "can_view": true
+      },
+      "action_plan_dashboard": {
+        "can_view": false
+      },
+      "action_plans": {
+        "can_view": false
+      },
+      "strategic_timeline": {
+        "can_view": false
+      },
+      "strategic_kanban": {
+        "can_view": false
+      },
+      "impl_dashboard": {
+        "can_view": false
+      },
+      "impl_action_plan": {
+        "can_view": false
+      },
+      "impl_kanban": {
+        "can_view": false
+      },
+      "impl_timeline": {
+        "can_view": false
+      },
+      "importation": {
+        "allowed_sectors": [
+          "Logistica"
+        ]
+      },
+      "financeiro_base_orcado": {
+        "can_view": false
+      },
+      "financeiro_base_realizado": {
+        "can_view": false
+      },
+      "financeiro_orcado": {
+        "can_view": false
+      },
+      "financeiro_orcado_realizado": {
+        "can_view": false
+      },
+      "financeiro_dre": {
+        "can_view": false
+      },
+      "financeiro_plano_contas": {
+        "can_view": false
+      },
+      "financeiro_dre2025": {
+        "can_view": false
+      },
+      "ticket_categories_management": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "sac": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "sac_dashboard": {
+        "can_view": false
+      },
+      "metas_faturamento": {
+        "can_view": false
+      },
+      "sop_dashboard": {
+        "can_view": false
+      },
+      "plano_producao": {
+        "can_view": false
+      },
+      "otimizador_faturamento": {
+        "can_view": false
+      },
+      "whatsapp_numeros_autorizados": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "importation_v2": {
+        "can_view": false,
+        "can_edit": false,
+        "allowed_sectors": [
+          "Logistica"
+        ]
+      },
+      "rh_dashboard": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_colaboradores": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_recrutamento": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_documentos": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_jornada": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_movimentacoes": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_aprovacoes": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_config": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_equipamentos": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "simulador_importacao": {
+        "can_view": false
+      },
+      "cadastro_maquinas": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "programacao": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "eventos_album": {
+        "can_view": false
+      },
+      "eventos_admin": {
+        "can_view": false
+      },
+      "catalogo_view": {
+        "can_view": false
+      },
+      "catalogo_admin": {
+        "can_view": false
+      },
+      "financeiro_comissao": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "financeiro_analise_credito": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "marketing_ficha_tecnica": {
+        "can_view": false
+      },
+      "ficha_tecnica_catalogo": {
+        "can_view": false
+      }
+    }
+  },
+  {
+    "role": "externo",
+    "permissions": {
+      "sac": {
+        "can_view": true,
+        "can_edit": false
+      },
+      "metas_faturamento": {
+        "can_view": false
+      },
+      "sop_dashboard": {
+        "can_view": false
+      },
+      "plano_producao": {
+        "can_view": false
+      },
+      "otimizador_faturamento": {
+        "can_view": false
+      },
+      "whatsapp_numeros_autorizados": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "importation_v2": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_dashboard": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_colaboradores": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_recrutamento": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_documentos": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_jornada": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_movimentacoes": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_aprovacoes": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_config": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "rh_equipamentos": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "simulador_importacao": {
+        "can_view": false
+      },
+      "cadastro_maquinas": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "programacao": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "eventos_album": {
+        "can_view": false
+      },
+      "eventos_admin": {
+        "can_view": false
+      },
+      "catalogo_view": {
+        "can_view": false
+      },
+      "catalogo_admin": {
+        "can_view": false
+      },
+      "financeiro_comissao": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "financeiro_analise_credito": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "marketing_ficha_tecnica": {
+        "can_view": false
+      },
+      "ficha_tecnica_catalogo": {
+        "can_view": false
+      }
+    }
+  },
+  {
+    "role": "ceo",
+    "permissions": {
+      "dashboard": {
+        "can_view": true
+      },
+      "tickets": {
+        "can_view": true
+      },
+      "sector_info": {
+        "can_view": true
+      },
+      "schedule": {
+        "can_view": true
+      },
+      "action_plan_dashboard": {
+        "can_view": true
+      },
+      "action_plans": {
+        "can_view": true
+      },
+      "strategic_timeline": {
+        "can_view": true
+      },
+      "strategic_kanban": {
+        "can_view": true
+      },
+      "impl_dashboard": {
+        "can_view": true
+      },
+      "impl_action_plan": {
+        "can_view": true
+      },
+      "impl_kanban": {
+        "can_view": true
+      },
+      "impl_timeline": {
+        "can_view": true
+      },
+      "financeiro_base_orcado": {
+        "can_view": true
+      },
+      "financeiro_base_realizado": {
+        "can_view": true
+      },
+      "financeiro_orcado": {
+        "can_view": true
+      },
+      "financeiro_orcado_realizado": {
+        "can_view": true
+      },
+      "financeiro_dre": {
+        "can_view": true
+      },
+      "financeiro_plano_contas": {
+        "can_view": true
+      },
+      "financeiro_dre2025": {
+        "can_view": true
+      },
+      "ticket_categories_management": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "sac": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "sac_dashboard": {
+        "can_view": true
+      },
+      "metas_faturamento": {
+        "can_view": false
+      },
+      "sop_dashboard": {
+        "can_view": false
+      },
+      "plano_producao": {
+        "can_view": false
+      },
+      "otimizador_faturamento": {
+        "can_view": false
+      },
+      "whatsapp_numeros_autorizados": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "importation_v2": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "rh_dashboard": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "rh_colaboradores": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "rh_recrutamento": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "rh_documentos": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "rh_jornada": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "rh_movimentacoes": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "rh_aprovacoes": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "rh_config": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "rh_equipamentos": {
+        "can_view": true,
+        "can_edit": true
+      },
+      "simulador_importacao": {
+        "can_view": true
+      },
+      "cadastro_maquinas": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "programacao": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "eventos_album": {
+        "can_view": false
+      },
+      "eventos_admin": {
+        "can_view": false
+      },
+      "catalogo_view": {
+        "can_view": false
+      },
+      "catalogo_admin": {
+        "can_view": false
+      },
+      "financeiro_comissao": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "financeiro_analise_credito": {
+        "can_view": false,
+        "can_edit": false
+      },
+      "marketing_ficha_tecnica": {
+        "can_view": false
+      },
+      "ficha_tecnica_catalogo": {
+        "can_view": false
+      }
+    }
+  }
+]

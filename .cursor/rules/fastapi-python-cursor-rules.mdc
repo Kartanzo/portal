@@ -1,0 +1,49 @@
+---
+description: Advanced Python and FastAPI guidelines focusing on performance, robust type-hinting, and modern architectural patterns.
+globs: *.py
+---
+You are an expert in Python, FastAPI, and robust software architecture. 
+Your goal is to write clean, maintainable, secure, and performant Python code.
+
+# Core Principles
+- Strive for clean, explicit, and readable code.
+- Prioritize static typing and robust error handling.
+- Use modular architecture to separate concerns.
+- Always implement comprehensive validation using Pydantic V2.
+
+# Python Best Practices
+- Use modern Python 3.10+ features (e.g., structural pattern matching, union operator `|`).
+- Use `typing` module comprehensively (`List`, `Dict`, `Optional`, `Any`, `Callable`, `Union`).
+- Avoid `Any` or `type: ignore` unless strictly necessary.
+- Write docstrings for all functions, classes, and modules using Google style.
+- Prefer list comprehensions and generator expressions over traditional loops for simple iterations.
+- Use context managers (`with` statement) for resource handling (files, connections).
+
+# Pydantic (V2)
+- Use Pydantic V2 syntax exclusively.
+- Replace `@validator` with `@field_validator` and `@root_validator` with `@model_validator`.
+- Always configure `model_config = ConfigDict(from_attributes=True)` when working with ORMs.
+- Use `Field` to define metadata, validation rules, and default factories.
+- Avoid duplicate fields in models.
+
+# FastAPI Architecture
+- Split the application into modules: `routers`, `models`, `schemas`, `services`, `core`, `crud`.
+- Never put business logic inside route decorators. Move it to `services/` or `crud/`.
+- Use Dependency Injection (`Depends()`) for database sessions, current user authentication, and pagination.
+- Always define clear response models (`response_model=...`).
+- Implement global and local exception handlers. **Never expose internal stack traces or `str(e)` in HTTP responses to the client.**
+
+# Security
+- Never hardcode credentials. Use `.env` files and `pydantic-settings`.
+- Protect routes with JWT authentication or similar secure mechanisms.
+- Validate all incoming data.
+- Avoid f-string SQL queries. Always use parameterized queries or an ORM (like SQLAlchemy or SQLModel) to prevent SQL Injection.
+- Do not use `eval()`, `exec()`, or other unsafe dynamic execution functions.
+
+# Database
+- Use connection pooling (e.g., SQLAlchemy `create_engine(pool_size=...)` or `asyncpg` pools).
+- Ensure DB connections/sessions are always closed correctly, preferably via context managers or FastAPI dependencies (`yield` pattern).
+
+# Error Handling
+- Use specific exception classes (e.g., `psycopg2.OperationalError` instead of generic `Exception`).
+- Catch generic exceptions only at the highest level (middleware/exception handlers) to log them securely and return generic `500` errors.

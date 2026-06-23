@@ -1,0 +1,38 @@
+﻿Objetivos duplicados encontrados: 8
+
+=== 'Agilizar lanþamento de produtos' (2 registros) ===
+  ID: 1e38290c-28ee-427f-9783-0eeed1f94cc9 | Setor: Marketing | Macro: PIP | Items: 0 | Com dados: 0 | [VAZIO]
+  ID: fa31bbf4-bb7d-49f8-a08b-b7cd872d7b9f | Setor: Fabrica | Macro: PIP | Items: 0 | Com dados: 0 | [VAZIO]
+
+=== 'Aumentar o volume de vendas em Acessibilidade (blindar)' (2 registros) ===
+  ID: b2ead3ef-4e89-4402-bb49-ea3d46d0a7fc | Setor: Administrativo, Qualidade, RH, Fabrica, Logistica, Custos, Compras | Macro: CLI | Items: 5 | Com dados: 5 | [COM DADOS]
+  ID: 72e58077-16cb-4177-9225-02860b4bfadf | Setor: Marketing | Macro: CLI | Items: 0 | Com dados: 0 | [VAZIO]
+
+=== 'AvaliaþÒo de Desempenho' (2 registros) ===
+  ID: fdc7fe5d-b144-46f6-bf83-67f08744f343 | Setor: RH | Macro: PAC | Items: 1 | Com dados: 1 | [COM DADOS]
+  ID: faff125d-4ba3-4576-8862-37b0bf5eaf7a | Setor: Fabrica | Macro: PAC | Items: 0 | Com dados: 0 | [VAZIO]
+
+=== 'Captar Talentos (cargos chaves)' (2 registros) ===
+  ID: 69b8a289-5471-4024-9211-a872feddbc96 | Setor: RH | Macro: PAC | Items: 1 | Com dados: 1 | [COM DADOS]
+  ID: 285751f4-2502-40a5-a356-e34a67f62766 | Setor: Fabrica | Macro: PAC | Items: 0 | Com dados: 0 | [VAZIO]
+
+=== 'Desenhar e aprimorar os processos internos' (4 registros) ===
+  ID: 236ce63e-eb43-41ae-956c-ddb63e01ccdc | Setor: LogÝstica | Macro: PIP | Items: 0 | Com dados: 0 | [VAZIO]
+  ID: c25e7c91-ddfe-4a23-87f0-1e48604c4d55 | Setor: T.I | Macro: PIP | Items: 0 | Com dados: 0 | [VAZIO]
+  ID: f6d51adf-23d5-4a42-8b13-fdd31e0d3b2c | Setor: Fabrica | Macro: PIP | Items: 0 | Com dados: 0 | [VAZIO]
+  ID: feb1c1b4-1d45-411e-9da7-727a38e0c551 | Setor: LogÝstica | Macro: PIP | Items: 0 | Com dados: 0 | [VAZIO]
+
+=== 'Desenvolver e Reter Talentos' (4 registros) ===
+  ID: 60c611fe-a024-4644-8e37-52eea6744a41 | Setor: RH | Macro: PAC | Items: 2 | Com dados: 2 | [COM DADOS]
+  ID: 0a7b65f7-e9d6-4090-ab77-ff05296bf9f2 | Setor: Financeiro | Macro: PAC | Items: 1 | Com dados: 1 | [COM DADOS]
+  ID: 760df45f-8ac9-4428-8ea9-e08b72ba16a8 | Setor: Fabrica | Macro: PAC | Items: 0 | Com dados: 0 | [VAZIO]
+  ID: 990865d4-8315-483e-a2b1-c07e0ac158a6 | Setor: RH | Macro: PAC | Items: 0 | Com dados: 0 | [VAZIO]
+
+=== 'Mudanþa de Cultura Hierßrquica para resultado e aprendizagem' (2 registros) ===
+  ID: e39ecc82-9314-4f6a-8629-b3a19dec1a7d | Setor: Fabrica | Macro: PAC | Items: 3 | Com dados: 3 | [COM DADOS]
+  ID: d3aa8ebe-1611-4d63-a166-7e0b758b74f9 | Setor: RH | Macro: PAC | Items: 0 | Com dados: 0 | [VAZIO]
+
+=== 'Rever polÝtica comercial ecommerce x varejo' (2 registros) ===
+  ID: acce069e-bc96-43f4-bfb8-417893390523 | Setor: Comercial | Macro: CLI | Items: 0 | Com dados: 0 | [VAZIO]
+  ID: c6ded1d5-77e1-41dd-88b6-de8eab20302f | Setor: Comercial | Macro: CLI | Items: 0 | Com dados: 0 | [VAZIO]
+

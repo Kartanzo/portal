@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: blackd-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/cred.json:/app/cred.json # Mounting credentials file
+      # - ./backend/role_permissions.json:/app/role_permissions.json # Persist permissions if needed
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: blackd-frontend
+    ports:
+      - "8080:80" # Maps localhost:8080 to container port 80
+    depends_on:
+      - backend
+    restart: unless-stopped

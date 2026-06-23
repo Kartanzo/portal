@@ -1,0 +1,9 @@
+﻿Duplicados ativos restantes: 1
+
+=== 'Desenvolver e Reter Talentos' (2 registros) ===
+  ID: 60c611fe-a024-4644-8e37-52eea6744a41 | Setor: RH | Macro: PAC | Items: 2
+    -> Item: 1646f970-7509-436b-ab91-cf068327707a | AþÒo: AvaliaþÒo de desempenho... | Status: NÒo Iniciado
+    -> Item: 131ed961-f794-4599-b676-5f05da9e8b28 | AþÒo: PDI... | Status: NÒo Iniciado
+  ID: 0a7b65f7-e9d6-4090-ab77-ff05296bf9f2 | Setor: Financeiro | Macro: PAC | Items: 1
+    -> Item: 350055c8-2127-4113-981d-ae2cef7c0b06 | AþÒo: InternalizaþÒo da Folha de Pagamento... | Status: Em Andamento
+

@@ -1,0 +1,29 @@
+{
+    "Cópia de Cópia de Plano de Contas - Reforma Tributária e CPCs.xlsx": {},
+    "MBK_Relatórios Gerenciais_2026.xlsx": {
+        "Orçado": {
+            "row_groups": {
+                "1": "6, 11-15, 21-25, 27-36, 38-39, 41, 48-53, 55-63, 65-67, 74-86, 88-98, 100-117"
+            },
+            "col_groups": {
+                "1": "B"
+            }
+        },
+        "Orçado x Realizado": {
+            "row_groups": {
+                "1": "8, 13-17, 23-27, 29-38, 40-41, 43, 50-55, 57-65, 67-69, 76-88, 90-100, 102-123"
+            },
+            "col_groups": {
+                "1": "B"
+            }
+        },
+        "DRE Comparativo": {
+            "row_groups": {
+                "1": "8, 13-17, 23-27, 29-38, 40-41, 43, 50-55, 57-65, 67-69, 76-88, 90-100, 102-123"
+            },
+            "col_groups": {
+                "1": "B"
+            }
+        }
+    }
+}

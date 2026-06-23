@@ -1,0 +1,23 @@
+# Colunas - Order List 108
+
+- Codigo 3LACKD = codigo do item
+- PHOTO NO = numero da foto
+- Barcode Number = codigo de barras
+- DESCRIPTION = descricao
+- NAME = nome
+- REMARK = observacao
+- OBS = observacao
+- NCM = codigo ncm
+- CTNS = quantidade de caixas = recalcular
+- UNIT/CTN = quantidade por caixa = fixo
+- QTY = quantidade total
+-  PRICE = preço em yuan
+- UNIT = unidade
+- AMOUNT = valor total = recalcular
+- L = comprimento= fixo
+- W = largura = fixo
+- H = altura= fixo
+- CBM = metro cubico  = recalcular
+- CBM TOTAL  = metro cubico total = recalcular
+- G.W = peso bruto = recalcular
+- G.T.W = peso bruto total = recalcular
