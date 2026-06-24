@@ -45,14 +45,23 @@ Crie um serviço de **Postgres** no EasyPanel (ou use um banco gerenciado). Anot
 - **Source:** este repositório, pasta `frontend/`, usando o Dockerfile **`Dockerfile.homolog.frontend`**.
   - Esse Dockerfile embute o `nginx.homolog.conf`, que faz proxy de `/api` → **`http://homolog-portal-back:8000`**.
 - **Porta interna:** `80`.
-- **Sem variáveis de ambiente** (o front fala com o back via `/api`, resolvido pelo nginx).
+- **Variável de ambiente (1):**
+
+  | Variável | Valor |
+  |---|---|
+  | `API_BACKEND` | `<hostname-interno-do-backend>:8000` (ex.: `portal-projeto_backend:8000`) |
+
+  O frontend fala com o backend via `/api`, e o nginx faz proxy para `http://$API_BACKEND`.
 - Aponte o **domínio público** do EasyPanel para este app (frontend).
 
-### ⚠️ O ponto que mais quebra o deploy
-O nome do serviço do backend **precisa bater** com o upstream do nginx do frontend:
-- Se o backend se chama `homolog-portal-back` → use `Dockerfile.homolog.frontend` (já aponta pra lá). ✅ (recomendado)
-- Se você nomear o backend diferente → edite `frontend/nginx.homolog.conf` (linhas `proxy_pass`) pro nome correto e rebuild o front.
-- Front e back devem estar no **mesmo projeto/rede interna** do EasyPanel pra um achar o outro pelo nome.
+### ⚠️ O ponto que mais quebra o deploy: o nome interno do backend
+O nginx do frontend precisa achar o backend pelo hostname interno do EasyPanel.
+- Descubra o **hostname interno** do seu serviço de backend (no EasyPanel costuma ser
+  `<projeto>_<app>`, ex.: `portal-projeto_backend`).
+- Defina `API_BACKEND=<esse-host>:8000` na env do **frontend**.
+- Com `resolver` no nginx, se o nome estiver errado o container **não crasha** — apenas
+  retorna 502 em `/api` até você acertar o `API_BACKEND`.
+- Front e back devem estar no **mesmo projeto/rede interna** do EasyPanel.
 
 ---
 
