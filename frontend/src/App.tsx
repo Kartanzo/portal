@@ -29,7 +29,6 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
 import { Toaster } from './components/ui/Toaster';
 import NotificationSettings from './components/NotificationSettings';
-import WhatsAppNumerosAutorizados from './components/Configuracoes/WhatsAppNumerosAutorizados';
 import GeneralOverview from './components/GeneralOverview';
 import EventosAlbum from './components/Eventos/EventosAlbum';
 import MarketingPage from './components/Marketing/MarketingPage';
@@ -337,7 +336,6 @@ function App() {
                     <Route path="/ticket-categories" element={<ProtectedRoute module="ticket_categories_management"><CategoryManagement user={user} /></ProtectedRoute>} />
                     <Route path="/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
                     <Route path="/sectors" element={<AdminRoute><SectorManagement /></AdminRoute>} />
-                    <Route path="/configuracoes/whatsapp-numeros" element={<AdminRoute><WhatsAppNumerosAutorizados /></AdminRoute>} />
                   </Routes>
                 </MainShell>
               </div>

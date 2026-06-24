@@ -8,7 +8,6 @@ let __SOP_CACHE_AT: Date | null = null;
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { api } from '../../app_api';
 import { RotateCcw, TrendingUp, TrendingDown, Minus, Search, BarChart3, LineChart as LineChartIcon, X, FilterX, Maximize2, Minimize2, FileDown, MessageSquare } from 'lucide-react';
-import WhatsAppEnvioModal from '../Configuracoes/WhatsAppEnvioModal';
 import KpiCard, { KpiColor, KpiGrid } from '../common/KpiCard';
 import { useToast } from '../../contexts/ToastContext';
 import { toast } from '../ui/Toaster';
@@ -524,7 +523,6 @@ const SopDashboard: React.FC = () => {
     }, []);
 
     const [exportingPdf, setExportingPdf] = useState(false);
-    const [wppModalOpen, setWppModalOpen] = useState(false);
     const { showToast } = useToast();
     // exportarPdf é definido abaixo (após totais) para acessar dadosFiltrados/totais sem TDZ
     const [p1, setP1] = useState(0);
@@ -1043,14 +1041,6 @@ const SopDashboard: React.FC = () => {
                         {exportingPdf ? 'Gerando...' : 'PDF'}
                     </button>
                     <button
-                        onClick={() => setWppModalOpen(true)}
-                        disabled={!proc}
-                        title="Enviar dashboard via WhatsApp (HTML interativo gerado no servidor)"
-                        className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 border border-green-500 rounded-lg font-bold disabled:opacity-50"
-                    >
-                        <MessageSquare className="w-4 h-4" /> WhatsApp
-                    </button>
-                    <button
                         onClick={toggleFullscreen}
                         title={isFullscreen ? 'Sair da tela cheia' : 'Expandir para tela cheia'}
                         className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg font-bold"
@@ -1480,27 +1470,6 @@ const SopDashboard: React.FC = () => {
                     </div>
                 </div>
             )}
-            <WhatsAppEnvioModal
-                open={wppModalOpen}
-                onClose={() => setWppModalOpen(false)}
-                titulo="Enviar Torre S&OP (HTML interativo)"
-                onEnviar={(numero) => {
-                    if (!proc) return Promise.reject(new Error('Dashboard ainda não carregado.'));
-                    return api.enviarSopDashboardWhatsAppInterativo(numero, {
-                        db_main: proc.mainData,
-                        db_drill: proc.drill,
-                        db_ai: proc.aiData,
-                        db_aging: proc.agingData,
-                        db_late: proc.lateOrders,
-                        periods: proc.sortedPeriods,
-                        kpis_topo: proc.kpisTopo,
-                        total_late_vol: proc.totalLateVol,
-                        total_backlog_vol: proc.totalBacklogVol,
-                        current_year: proc.currentYear,
-                        current_month: proc.currentMonth,
-                    });
-                }}
-            />
         </div>
     );
 };

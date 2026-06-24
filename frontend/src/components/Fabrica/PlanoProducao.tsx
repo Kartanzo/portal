@@ -5,8 +5,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { api } from '../../app_api';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { RotateCcw, FileDown, History, AlertTriangle, X, Clock, User as UserIcon, ArrowLeft, ArrowUp, ArrowDown, Search, Maximize2, Minimize2, MessageSquare, ChevronDown } from 'lucide-react';
-import WhatsAppEnvioModal from '../Configuracoes/WhatsAppEnvioModal';
+import { RotateCcw, FileDown, History, AlertTriangle, X, Clock, User as UserIcon, ArrowLeft, ArrowUp, ArrowDown, Search, Maximize2, Minimize2, ChevronDown } from 'lucide-react';
 import TableScroll from '../common/TableScroll';
 
 // Botao reutilizavel: expande um elemento para tela cheia + tenta travar paisagem (mobile)
@@ -272,7 +271,6 @@ const PlanoProducao: React.FC = () => {
     const confirmar = useConfirm();
     const [aba, setAba] = useState<'plano' | 'estoque' | 'detalhe' | 'historico'>('plano');
     const [modalConfirm, setModalConfirm] = useState(false);
-    const [wppModalOpen, setWppModalOpen] = useState(false);
     const today = new Date().toISOString().slice(0, 10);
     const [dataRef, setDataRef] = useState<string>(today);
     const [viewingOldVersion, setViewingOldVersion] = useState(false);
@@ -612,15 +610,6 @@ const PlanoProducao: React.FC = () => {
                             title="Baixar Excel desta versão"
                         >
                             <FileDown className="w-4 h-4" /> Excel
-                        </button>
-                    )}
-                    {versao && (
-                        <button
-                            onClick={() => setWppModalOpen(true)}
-                            className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 border border-green-500 rounded-lg font-bold"
-                            title="Enviar plano (Excel) via WhatsApp"
-                        >
-                            <MessageSquare className="w-4 h-4" /> WhatsApp
                         </button>
                     )}
                     <button
@@ -1101,14 +1090,6 @@ const PlanoProducao: React.FC = () => {
                 );
             })()}
 
-            {versao && (
-                <WhatsAppEnvioModal
-                    open={wppModalOpen}
-                    onClose={() => setWppModalOpen(false)}
-                    titulo="Enviar Otimizador de Produção (Excel)"
-                    onEnviar={(numero) => api.enviarPlanoProducaoWhatsApp(versao.id, numero)}
-                />
-            )}
         </div>
     );
 };

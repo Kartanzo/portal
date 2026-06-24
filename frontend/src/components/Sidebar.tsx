@@ -529,10 +529,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
                 <Shield className={`w-4 h-4 ${iconMargin}`} />
                 {showText && "Controle de Permissões"}
               </NavLink>
-              <NavLink to="/configuracoes/whatsapp-numeros" className={lc} style={mobileStyle} onClick={onClick}>
-                <MessageSquare className={`w-4 h-4 ${iconMargin}`} />
-                {showText && "Números WhatsApp"}
-              </NavLink>
             </div>
           </SidebarSection>
           </SectorGroup>

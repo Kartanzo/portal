@@ -2,7 +2,6 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { useToast } from '../contexts/ToastContext';
 import { api } from '../app_api';
 import { Plus, Trash, Search, DollarSign, Package, AlertTriangle, TrendingUp, Truck, Info, Calendar, BarChart, Maximize2, Minimize2, X, RotateCcw, FileDown, Upload, LayoutPanelLeft, LayoutDashboard, User, Clock, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
-import WhatsAppEnvioModal from './Configuracoes/WhatsAppEnvioModal';
 
 // Botao reutilizavel: expande um elemento para tela cheia + tenta travar paisagem (mobile)
 const ExpandButton: React.FC<{ targetRef: React.RefObject<HTMLDivElement> }> = ({ targetRef }) => {
@@ -120,7 +119,6 @@ const Importation: React.FC<ImportationProps> = ({ user }) => {
     const [sidebarView, setSidebarView] = useState<'dashboard' | 'history'>('dashboard');
     const [isExporting, setIsExporting] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-    const [wppModalOpen, setWppModalOpen] = useState(false);
     const tableWrapperRef = useRef<HTMLDivElement>(null);
 
     const getImportationStatusColor = (item: any) => {
@@ -854,14 +852,6 @@ const Importation: React.FC<ImportationProps> = ({ user }) => {
                                         <button onClick={handleExport} title="Exportar para CSV" className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 rounded-full border border-emerald-100 flex items-center gap-1.5 hover:bg-emerald-100 transition-all">
                                             <FileDown className="w-3.5 h-3.5" /> CSV
                                         </button>
-                                        <button
-                                            onClick={() => setWppModalOpen(true)}
-                                            disabled={!results}
-                                            title="Enviar planilha (Itens + Containers) via WhatsApp"
-                                            className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white bg-green-600 hover:bg-green-700 rounded-full border border-green-500 flex items-center gap-1.5 disabled:opacity-50"
-                                        >
-                                            <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
-                                        </button>
                                         <ExpandButton targetRef={tableWrapperRef} />
                                         <span className="hidden xl:inline-flex text-[9px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap ml-2">
                                             Atualizado {(lastUpdate || new Date()).toLocaleString('pt-BR')}
@@ -896,13 +886,6 @@ const Importation: React.FC<ImportationProps> = ({ user }) => {
             </div>
 
             {/* Float Detail Panel - When an item is selected */}
-
-            <WhatsAppEnvioModal
-                open={wppModalOpen}
-                onClose={() => setWppModalOpen(false)}
-                titulo="Enviar Importação (Excel: Itens + Containers)"
-                onEnviar={(numero) => api.enviarImportacaoWhatsApp(numero)}
-            />
 
             {loading && <LoadingOverlay />}
 

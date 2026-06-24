@@ -7,7 +7,6 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import WhatsAppEnvioModal from '../Configuracoes/WhatsAppEnvioModal';
 import SimuladorImportacao from './SimuladorImportacao';
 import {
     RotateCcw, Save, Plus, X, TrendingUp, TrendingDown, AlertTriangle, Info,
@@ -294,10 +293,8 @@ const ImportacaoV2: React.FC<{ user: any }> = ({ user }) => {
     const [sortBy, setSortBy] = useState<string>('');
     const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
-    // ações de exportação / WhatsApp
     const tabelaRef = React.useRef<HTMLDivElement>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [waOpen, setWaOpen] = useState(false);
 
     // Order List (import xlsx → preenche Em Trânsito)
     const orderFileRef = React.useRef<HTMLInputElement>(null);
@@ -1451,7 +1448,6 @@ ${containersHtml}
                         <Button variant="secondary" size="sm" onClick={abrirModalSalvarVersao} title="Salvar versão"><Save className="w-3.5 h-3.5" /><span className="inline ml-1">Salvar versão</span></Button>
                         <Button variant="secondary" size="sm" onClick={exportExcel} title="Exportar Excel"><FileSpreadsheet className="w-3.5 h-3.5" /><span className="inline ml-1">Excel</span></Button>
                         <Button variant="secondary" size="sm" onClick={exportPdf} title="Exportar PDF"><FileDown className="w-3.5 h-3.5" /><span className="inline ml-1">PDF</span></Button>
-                        <Button variant="whatsapp" size="sm" onClick={() => setWaOpen(true)} title="WhatsApp"><MessageSquare className="w-3.5 h-3.5" /><span className="inline ml-1">WhatsApp</span></Button>
                         {/* Tela cheia só em desktop com mouse (touch screens travavam) */}
                         <Button variant="secondary" size="sm" onClick={toggleFullscreen} title={isFullscreen ? 'Sair da tela cheia' : 'Tela cheia'} className="hidden xl:inline-flex">{isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}<span className="ml-1">{isFullscreen ? 'Sair' : 'Tela cheia'}</span></Button>
                         <Button variant="primary" size="sm" onClick={calcular} disabled={loading}>
@@ -2482,18 +2478,6 @@ ${containersHtml}
                     </div>
                 </div>
             )}
-
-            {/* Modal WhatsApp — envia XLSX via WAHA (mesma infra do Plano de Produção) */}
-            <WhatsAppEnvioModal
-                open={waOpen}
-                titulo="Enviar Importação v2 via WhatsApp"
-                onClose={() => setWaOpen(false)}
-                onEnviar={(numero) => api.importacaoV2EnviarWhatsApp(
-                    numero,
-                    { qtd_meses: qtdMeses, modo, lead_time_default: leadDefault, nivel_servico_default: nivelDefault, threshold_sigma: threshold, codigos, overrides },
-                    itensVisiveis,
-                )}
-            />
 
             {/* Modal salvar */}
             {modalNome !== null && (

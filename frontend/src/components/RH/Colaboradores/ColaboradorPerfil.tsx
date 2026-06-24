@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, X, Save, Users, FileText, ClipboardList, History, CheckCircle2, AlertTriangle, Banknote, Hammer, MessageCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Pencil, X, Save, Users, FileText, ClipboardList, History, CheckCircle2, AlertTriangle, Banknote, Hammer } from 'lucide-react';
 import { api } from '../../../app_api';
 import { useToast } from '../../../contexts/ToastContext';
 import VoltarDashboardRH from '../_shared/VoltarDashboardRH';
@@ -56,9 +56,6 @@ const ColaboradorPerfil: React.FC = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState<any>({});
     const [salvando, setSalvando] = useState(false);
-    // Modal WhatsApp
-    const [whatsAppOpen, setWhatsAppOpen] = useState(false);
-
     const carregar = async () => {
         if (!id) return;
         setLoading(true);
@@ -214,12 +211,6 @@ const ColaboradorPerfil: React.FC = () => {
                                     <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Telefone</span>
                                     <div className="flex items-center gap-2 mt-0.5">
                                         <span className="text-slate-800 dark:text-slate-100 font-semibold">{c.telefone || '—'}</span>
-                                        {c.telefone && (
-                                            <button onClick={() => setWhatsAppOpen(true)} title="Enviar WhatsApp"
-                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold">
-                                                <MessageCircle className="w-3 h-3" /> WhatsApp
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
                                 <Field label="Endereço" value={c.endereco} className="md:col-span-2" />
@@ -256,8 +247,6 @@ const ColaboradorPerfil: React.FC = () => {
                         )}
                     </div>
                 </div>
-
-            {whatsAppOpen && <WhatsAppModal colaborador={c} onClose={() => setWhatsAppOpen(false)} />}
 
             {/* Modal Editar */}
             {modalOpen && (
@@ -326,94 +315,6 @@ const ColaboradorPerfil: React.FC = () => {
                 </div>
             )}
         </RhPageBg>
-    );
-};
-
-// Modal de envio de mensagem WhatsApp pra um colaborador
-const WhatsAppModal: React.FC<{ colaborador: any; onClose: () => void }> = ({ colaborador, onClose }) => {
-    const toast = useToast();
-    const [mensagem, setMensagem] = useState(`Olá ${(colaborador.nome || '').split(' ')[0]},\n\n`);
-    const [modelos, setModelos] = useState<any[]>([]);
-    const [modeloId, setModeloId] = useState<string>('');
-
-    useEffect(() => {
-        api.rhModelosListar({ ativo: true })
-            .then((r) => setModelos((r.modelos || []).filter((m: any) => m.file_url)))
-            .catch(() => {});
-    }, []);
-
-    // Sanitiza o telefone para formato wa.me (apenas dígitos, com país)
-    const numeroLimpo = () => {
-        const apenasDigitos = (colaborador.telefone || '').replace(/\D/g, '');
-        if (!apenasDigitos) return '';
-        return apenasDigitos.startsWith('55') ? apenasDigitos : `55${apenasDigitos}`;
-    };
-
-    const modeloSel = modelos.find(m => String(m.id) === modeloId);
-    const mensagemFinal = useMemo(() => {
-        let m = mensagem;
-        if (modeloSel) {
-            const link = `${window.location.origin}/api/rh/documentos/modelos/${modeloSel.id}/download`;
-            m += `\n\n📄 *${modeloSel.codigo} — ${modeloSel.nome}*\n${link}`;
-        }
-        return m.trim();
-    }, [mensagem, modeloSel]);
-
-    const enviar = () => {
-        const num = numeroLimpo();
-        if (!num) { toast.showToast('Telefone inválido', 'error'); return; }
-        const url = `https://wa.me/${num}?text=${encodeURIComponent(mensagemFinal)}`;
-        window.open(url, '_blank');
-        onClose();
-    };
-
-    return (
-        <div className="fixed inset-0 z-[60] flex items-start justify-center bg-black/50 pt-20 pb-4 px-4 overflow-y-auto" onClick={onClose}>
-            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-                <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20">
-                    <div className="flex items-center gap-2">
-                        <MessageCircle className="w-4 h-4 text-emerald-600" />
-                        <h3 className="font-bold">Enviar WhatsApp · {colaborador.nome}</h3>
-                    </div>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><X className="w-4 h-4" /></button>
-                </div>
-                <div className="p-4 space-y-3 text-xs">
-                    <div className="text-[11px] text-slate-500">Para: <strong className="text-slate-700 dark:text-slate-200">{colaborador.telefone}</strong></div>
-
-                    <label className="block">
-                        <span className="text-[10px] text-slate-500 font-semibold">Mensagem</span>
-                        <textarea value={mensagem} onChange={(e) => setMensagem(e.target.value)}
-                            rows={6} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-xs" />
-                    </label>
-
-                    <label className="block">
-                        <span className="text-[10px] text-slate-500 font-semibold">Anexar documento (opcional)</span>
-                        <select value={modeloId} onChange={(e) => setModeloId(e.target.value)}
-                            className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-xs">
-                            <option value="">— Nenhum documento —</option>
-                            {modelos.length === 0 ? <option disabled>Nenhum modelo com arquivo disponível</option> :
-                                modelos.map(m => (
-                                    <option key={m.id} value={m.id}>{m.codigo} — {m.nome}</option>
-                                ))}
-                        </select>
-                        {modeloSel && (
-                            <p className="text-[10px] text-slate-500 mt-1">Será incluído como link na mensagem para o destinatário baixar.</p>
-                        )}
-                    </label>
-
-                    <div className="bg-slate-50 dark:bg-slate-900/40 rounded p-2 text-[11px]">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold mb-1">Pré-visualização</p>
-                        <pre className="whitespace-pre-wrap font-sans text-slate-700 dark:text-slate-200">{mensagemFinal}</pre>
-                    </div>
-                </div>
-                <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
-                    <button onClick={onClose} className="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
-                    <button onClick={enviar} className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg">
-                        <ExternalLink className="w-3.5 h-3.5" /> Abrir WhatsApp
-                    </button>
-                </div>
-            </div>
-        </div>
     );
 };
 
