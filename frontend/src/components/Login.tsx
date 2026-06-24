@@ -8,7 +8,7 @@ import {
 import { useToast } from '../contexts/ToastContext';
 
 // Landing genérica sobre o PROJETO (portal corporativo). Sem imagens de empresa —
-// tudo via gradientes + ícones. Para reverter ao layout antigo: Login.original.tsx.
+// tudo via gradientes + ícones.
 const slides = [
   {
     tag: 'GESTÃO INTEGRADA',
