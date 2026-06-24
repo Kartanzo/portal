@@ -1336,13 +1336,56 @@ def seed_dummy_financeiro(admin_id: str) -> dict:
         # Garante as tabelas (idempotente).
         _ensure_finance_tables(cur)
 
-        # Idempotência: se já existir QUALQUER base ativa, não popula de novo.
-        cur.execute("SELECT COUNT(*) FROM financeiro_bases WHERE is_active = TRUE")
-        existing = cur.fetchone()[0]
-        if existing and int(existing) > 0:
+        # Idempotência (corrigida): em vez de pular se existir QUALQUER base ativa
+        # (o que deixava o relatório vazio quando havia bases parciais/antigas ou
+        # bases reais de usuário), verificamos especificamente as bases DUMMY de 2026
+        # e se elas REALMENTE têm linhas nas duas tabelas de dados.
+        #   - Se as duas bases dummy (orcado + realizado) existem e estão populadas,
+        #     não refaz nada (não duplica a cada start).
+        #   - Se estão ausentes/incompletas, removemos os resquícios dummy e
+        #     repopulamos corretamente, sem tocar em bases reais de usuário.
+        _DUMMY_FILES = ("dummy_orcado_2026.xlsx", "dummy_realizado_2026.xlsx")
+        cur.execute(
+            """
+            SELECT b.type, COALESCE(d.cnt, 0) AS cnt
+            FROM financeiro_bases b
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*) AS cnt
+                FROM financeiro_data_orcado o
+                WHERE o.base_id = b.id AND b.type = 'orcado'
+                UNION ALL
+                SELECT COUNT(*) AS cnt
+                FROM financeiro_data_realizado r
+                WHERE r.base_id = b.id AND b.type = 'realizado'
+            ) d ON TRUE
+            WHERE b.is_active = TRUE AND b.filename = ANY(%s)
+            """,
+            (list(_DUMMY_FILES),),
+        )
+        dummy_status = {row[0]: int(row[1]) for row in cur.fetchall()}
+        orcado_ok = dummy_status.get("orcado", 0) > 0
+        realizado_ok = dummy_status.get("realizado", 0) > 0
+        if orcado_ok and realizado_ok:
             conn.rollback()
             cur.close()
-            return {"skipped": True, "reason": "Já existem bases ativas", "bases": int(existing)}
+            return {
+                "skipped": True,
+                "reason": "Bases dummy 2026 já populadas",
+                "orcado_rows": dummy_status.get("orcado", 0),
+                "realizado_rows": dummy_status.get("realizado", 0),
+            }
+
+        # Limpa resquícios dummy (bases dummy vazias/incompletas e seus dados),
+        # preservando quaisquer bases reais enviadas por usuários.
+        cur.execute(
+            "SELECT id, type FROM financeiro_bases WHERE filename = ANY(%s)",
+            (list(_DUMMY_FILES),),
+        )
+        for _bid, _btype in cur.fetchall():
+            _tbl = "financeiro_data_orcado" if _btype == "orcado" else "financeiro_data_realizado"
+            cur.execute(f"DELETE FROM {_tbl} WHERE base_id = %s", (str(_bid),))
+            cur.execute("DELETE FROM financeiro_justificativas WHERE base_id = %s", (str(_bid),))
+            cur.execute("DELETE FROM financeiro_bases WHERE id = %s", (str(_bid),))
 
         meses = dummy.MESES_PT_LONGO  # ['Janeiro', ..., 'Dezembro']
         # Sanity: garante alinhamento com os departamentos dummy disponíveis.

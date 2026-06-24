@@ -236,6 +236,7 @@ _DOMAIN_SEEDS = [
     ("eventos", "modulo.eventos", "seed_dummy_eventos"),
     ("inter_sector", "modulo.inter_sector", "seed_dummy_inter_sector"),
     ("sac", "modulo.sac", "seed_dummy_sac"),
+    ("maquinas", "modulo.maquinas", "seed_dummy_maquinas"),
 ]
 
 
@@ -279,6 +280,7 @@ _RESET_TABLES = [
     "sac_comentarios", "sac_ticket_produtos", "sac_tickets",
     "inter_sector_ticket_participants", "inter_sector_ticket_updates", "inter_sector_tickets",
     "eventos_album_fotos",
+    "maquina_log", "estrutura_item", "estrutura_versao", "maquinas",
     "sop_dashboard_cache", "otimizador_faturamento_cache",
 ]
 

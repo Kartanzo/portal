@@ -291,6 +291,193 @@ def seed_tempos_padrao():
 
 
 # ============================================================================
+# SEED DUMMY de configuração de FÁBRICA (popula páginas vazias) — idempotente.
+# Cria as máquinas (mapeadas por NOME ao SEED_MAQUINA_TEMPOS), associa produtos
+# via maquina_produto_tempo + maquina_excecoes/maquina_regras e monta uma
+# estrutura/BOM (estrutura_versao + estrutura_item) coerente com carregar_produtos().
+# ============================================================================
+def seed_dummy_maquinas(admin_id: str) -> dict:
+    """Popula dados dummy de configuração de fábrica (máquinas, tempos, regras,
+    exceções e estrutura/BOM). IDEMPOTENTE: se já houver máquinas, não duplica.
+
+    Conexão/commit/rollback próprios (try/finally). Reusa SEED_MAQUINA_TEMPOS
+    (mesmos nomes/tempos) e carregar_produtos() para os códigos. Retorna um dict
+    com a contagem do que foi inserido (ou skipped=True se já populado)."""
+    ensure_tables()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # idempotência: já há máquinas? não duplica nada.
+        cur.execute("SELECT COUNT(*) FROM maquinas")
+        if (cur.fetchone()[0] or 0) > 0:
+            return {"ok": True, "skipped": True, "motivo": "ja_existem_maquinas"}
+
+        nome_admin = _nome_usuario(cur, admin_id)
+
+        # --- 1) MÁQUINAS: nomes distintos do SEED_MAQUINA_TEMPOS, na ordem ----
+        nomes_maquinas = []
+        for nome, _cod, _ph in SEED_MAQUINA_TEMPOS:
+            if nome not in nomes_maquinas:
+                nomes_maquinas.append(nome)
+        # cores de card (ciclo) para a Programação
+        cores = ["#2563eb", "#16a34a", "#dc2626", "#d97706", "#7c3aed",
+                 "#0891b2", "#db2777", "#65a30d", "#ea580c", "#4f46e5"]
+        id_por_nome = {}
+        for i, nome in enumerate(nomes_maquinas):
+            cur.execute(
+                "INSERT INTO maquinas (nome, ativo, cor, created_by, updated_by) "
+                "VALUES (%s, TRUE, %s, %s, %s) RETURNING id",
+                (nome, cores[i % len(cores)], str(admin_id) if admin_id else None,
+                 str(admin_id) if admin_id else None),
+            )
+            mid = cur.fetchone()[0]
+            id_por_nome[nome] = mid
+            _log(cur, mid, nome, "criou", admin_id, detalhe="seed dummy")
+
+        # --- 2) maquina_excecoes (incluir) + maquina_produto_tempo -----------
+        # Associa cada produto do seed à sua máquina (1 ou 2) com pecas_hora.
+        n_exc = n_tmp = 0
+        for nome, cod, ph in SEED_MAQUINA_TEMPOS:
+            mid = id_por_nome.get(nome)
+            if not mid:
+                continue
+            cur.execute(
+                "INSERT INTO maquina_excecoes (maquina_id, cod_item, acao, created_by) "
+                "VALUES (%s, %s, 'incluir', %s) ON CONFLICT (maquina_id, cod_item) DO NOTHING",
+                (mid, cod, str(admin_id) if admin_id else None),
+            )
+            n_exc += cur.rowcount
+            cur.execute(
+                "INSERT INTO maquina_produto_tempo (maquina_id, cod_item, pecas_hora, updated_by) "
+                "VALUES (%s, %s, %s, %s) ON CONFLICT (maquina_id, cod_item) DO NOTHING",
+                (mid, cod, ph, str(admin_id) if admin_id else None),
+            )
+            n_tmp += cur.rowcount
+
+        # --- 3) maquina_regras: prefixo por tipo de máquina (Injetora/Sopro) --
+        # Regras dinâmicas plausíveis: Injetoras pegam 104xxxxx, Sopros 103xxxxx.
+        n_reg = 0
+        for nome, mid in id_por_nome.items():
+            up = nome.upper()
+            if up.startswith("INJETORA"):
+                prefixo = "104"
+            elif up.startswith("SOPRO"):
+                prefixo = "103"
+            else:
+                prefixo = None
+            if prefixo:
+                cur.execute(
+                    "INSERT INTO maquina_regras (maquina_id, tipo, valor, created_by) "
+                    "VALUES (%s, 'prefixo', %s, %s)",
+                    (mid, prefixo, str(admin_id) if admin_id else None),
+                )
+                n_reg += 1
+        # uma exceção 'excluir' de exemplo (tira um código que a regra incluiria)
+        mid_inj1 = id_por_nome.get("INJETORA 1")
+        if mid_inj1:
+            cur.execute(
+                "INSERT INTO maquina_excecoes (maquina_id, cod_item, acao, created_by) "
+                "VALUES (%s, '10400969', 'excluir', %s) "
+                "ON CONFLICT (maquina_id, cod_item) DO UPDATE SET acao = 'excluir'",
+                (mid_inj1, str(admin_id) if admin_id else None),
+            )
+
+        # --- 4) ESTRUTURA / BOM (estrutura_versao + estrutura_item) ----------
+        # Árvore: para alguns produtos-pai (nível 1) cria componentes nível 2/3.
+        # O endpoint estrutura_do_produto liga pai->filhos por parent1 = ukeyk13
+        # do pai. Usamos a chave ukeyk13 = "K<cod>" como elo da árvore.
+        produtos = carregar_produtos()
+        desc_por_cod = {p["cod_item"]: p["desc_item"] for p in produtos}
+        un_por_cod = {p["cod_item"]: p.get("un_medida", "PC") for p in produtos}
+
+        cur.execute(
+            "INSERT INTO estrutura_versao (arquivo_nome, total_linhas, enviado_por, enviado_por_nome) "
+            "VALUES (%s, %s, %s, %s) RETURNING id",
+            ("estrutura_dummy.xls", 0, str(admin_id) if admin_id else None, nome_admin),
+        )
+        versao_id = cur.fetchone()[0]
+
+        # produtos-pai: primeiros códigos de produção montados/soprados/injetados
+        pais = [c for (_n, c, _p) in SEED_MAQUINA_TEMPOS]
+        # remove duplicatas mantendo ordem e limita a 12 árvores
+        seen = set()
+        pais = [c for c in pais if not (c in seen or seen.add(c))][:12]
+
+        # pool de componentes (códigos 103xxxxx extras gerados em carregar_produtos)
+        comps_pool = [p["cod_item"] for p in produtos if p["cod_item"].startswith("10300")]
+        ordem = 0
+        n_itens = 0
+        for idx, cod_pai in enumerate(pais):
+            keyk = f"K{cod_pai}"          # elo da árvore (ukeyk13 do pai)
+            # linha nível 1 (produto-pai). parent1 vazio; ukeyk13 = keyk
+            cur.execute(
+                "INSERT INTO estrutura_item "
+                "(versao_id, ordem, ukeyk13, cod, text, level, tipo, fab, qtdbase, unidade, parent1, codest) "
+                "VALUES (%s, %s, %s, %s, %s, 1, 'PA', 1, 1, %s, %s, %s)",
+                (versao_id, ordem, keyk, cod_pai,
+                 desc_por_cod.get(cod_pai, f"PRODUTO {cod_pai}"),
+                 un_por_cod.get(cod_pai, "PC"), "", cod_pai),
+            )
+            ordem += 1
+            n_itens += 1
+            # 2 a 3 componentes nível 2 ligados ao pai por parent1 = keyk
+            base = (idx * 3) % max(1, len(comps_pool))
+            n_comp = 2 + (idx % 2)       # 2 ou 3 filhos
+            for j in range(n_comp):
+                if not comps_pool:
+                    break
+                cod_comp = comps_pool[(base + j) % len(comps_pool)]
+                tipo_comp = "TABA" if (j == 0 and idx % 2 == 0) else "MP"
+                texto = f"{tipo_comp} {desc_por_cod.get(cod_comp, cod_comp)}"
+                cur.execute(
+                    "INSERT INTO estrutura_item "
+                    "(versao_id, ordem, ukeyk13, cod, text, level, tipo, fab, qtdbase, unidade, parent1, codest) "
+                    "VALUES (%s, %s, %s, %s, %s, 2, %s, 0, %s, %s, %s, %s)",
+                    (versao_id, ordem, f"{keyk}.{j}", cod_comp, texto, tipo_comp,
+                     round(0.5 + j * 0.5, 2), un_por_cod.get(cod_comp, "PC"), keyk, cod_comp),
+                )
+                ordem += 1
+                n_itens += 1
+                # 1 subcomponente nível 3 para o primeiro filho (profundidade 3)
+                if j == 0 and comps_pool:
+                    cod_sub = comps_pool[(base + n_comp) % len(comps_pool)]
+                    cur.execute(
+                        "INSERT INTO estrutura_item "
+                        "(versao_id, ordem, ukeyk13, cod, text, level, tipo, fab, qtdbase, unidade, parent1, codest) "
+                        "VALUES (%s, %s, %s, %s, %s, 3, 'MP', 0, 2, %s, %s, %s)",
+                        (versao_id, ordem, f"{keyk}.{j}.0", cod_sub,
+                         f"MP {desc_por_cod.get(cod_sub, cod_sub)}",
+                         un_por_cod.get(cod_sub, "PC"), f"{keyk}.{j}", cod_sub),
+                    )
+                    ordem += 1
+                    n_itens += 1
+
+        # total_linhas reflete os itens inseridos
+        cur.execute("UPDATE estrutura_versao SET total_linhas = %s WHERE id = %s", (n_itens, versao_id))
+
+        conn.commit()
+        resultado = {
+            "ok": True,
+            "skipped": False,
+            "maquinas": len(id_por_nome),
+            "tempos": n_tmp,
+            "excecoes": n_exc,
+            "regras": n_reg,
+            "estrutura_versao_id": versao_id,
+            "estrutura_itens": n_itens,
+        }
+        logger.info(f"seed_dummy_maquinas: {resultado}")
+        return resultado
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"seed_dummy_maquinas falhou: {e}")
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ============================================================================
 # MODELOS
 # ============================================================================
 class MaquinaIn(BaseModel):
