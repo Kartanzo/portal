@@ -94,67 +94,60 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
     }
   };
 
-  const HeroContent = ({ compact = false }: { compact?: boolean }) => (
-    <>
-      {/* Logo */}
-      <div className={`flex items-center gap-3 ${compact ? '' : 'mb-auto'}`}>
-        <img
-          src="/Logo-Empresa.png"
-          alt="Portal"
-          className={`${compact ? 'h-7' : 'h-9'} brightness-0 invert drop-shadow`}
-          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-        />
-        <div className="h-7 w-px bg-white/25" />
-        <span className="text-[10px] font-black text-white/70 tracking-[0.35em] uppercase">
-          Portal Corporativo
+  const Logo = ({ small = false }: { small?: boolean }) => (
+    <div className="flex items-center gap-3">
+      <img
+        src="/Logo-Empresa.png"
+        alt="Portal"
+        className={`${small ? 'h-7' : 'h-9'} brightness-0 invert drop-shadow`}
+        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+      />
+      <div className={`${small ? 'h-6' : 'h-7'} w-px bg-white/25`} />
+      <span className="text-[10px] font-black text-white/70 tracking-[0.35em] uppercase">
+        Portal Corporativo
+      </span>
+    </div>
+  );
+
+  const HeroBody = () => (
+    <div className="max-w-xl">
+      <div className="inline-flex items-center gap-2 mb-5 bg-white/10 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/15 shadow-xl float-slow">
+        <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/90">
+          {slides[activePhrase].tag}
         </span>
       </div>
+      <h1
+        key={activePhrase}
+        className="text-6xl font-black mb-6 leading-[0.95] tracking-tighter uppercase italic drop-shadow-2xl text-white animate-in fade-in slide-in-from-bottom-4 duration-700"
+      >
+        {slides[activePhrase].title}
+      </h1>
+      <div className="h-1 w-20 bg-sky-400 mb-5 rounded-full" />
+      <p
+        key={`p-${activePhrase}`}
+        className="text-lg text-white/80 font-medium leading-relaxed max-w-lg drop-shadow animate-in fade-in duration-700"
+      >
+        {slides[activePhrase].text}
+      </p>
 
-      {/* Hero text */}
-      {!compact && (
-        <div className="max-w-xl">
-          <div className="inline-flex items-center gap-2 mb-5 bg-white/10 backdrop-blur-xl px-4 py-1.5 rounded-full border border-white/15 shadow-xl float-slow">
-            <span className="w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
-            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-white/90">
-              {slides[activePhrase].tag}
-            </span>
-          </div>
-          <h1
-            key={activePhrase}
-            className="text-6xl font-black mb-6 leading-[0.95] tracking-tighter uppercase italic drop-shadow-2xl text-white animate-in fade-in slide-in-from-bottom-4 duration-700"
-          >
-            {slides[activePhrase].title}
-          </h1>
-          <div className="h-1 w-20 bg-sky-400 mb-5 rounded-full" />
-          <p
-            key={`p-${activePhrase}`}
-            className="text-lg text-white/80 font-medium leading-relaxed max-w-lg drop-shadow animate-in fade-in duration-700"
-          >
-            {slides[activePhrase].text}
-          </p>
-        </div>
-      )}
-
-      {/* Módulos do portal */}
-      {!compact && (
-        <div className="grid grid-cols-4 gap-3 max-w-xl">
-          {modules.map((m) => {
-            const Icon = m.icon;
-            return (
-              <div
-                key={m.label}
-                className="group flex flex-col items-center justify-center gap-2 py-4 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-md hover:bg-white/[0.12] hover:border-white/25 transition-all"
-              >
-                <Icon className="w-5 h-5 text-sky-300 group-hover:text-white transition-colors" />
-                <span className="text-[10px] font-bold text-white/70 group-hover:text-white uppercase tracking-wider transition-colors">
-                  {m.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </>
+      <div className="grid grid-cols-4 gap-3 max-w-xl mt-9">
+        {modules.map((m) => {
+          const Icon = m.icon;
+          return (
+            <div
+              key={m.label}
+              className="group flex flex-col items-center justify-center gap-2 py-4 rounded-2xl bg-white/[0.06] border border-white/10 backdrop-blur-md hover:bg-white/[0.12] hover:border-white/25 transition-all"
+            >
+              <Icon className="w-5 h-5 text-sky-300 group-hover:text-white transition-colors" />
+              <span className="text-[10px] font-bold text-white/70 group-hover:text-white uppercase tracking-wider transition-colors">
+                {m.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 
   return (
@@ -185,24 +178,35 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
         />
         <div className="absolute inset-0 shimmer pointer-events-none" />
 
-        {/* Conteúdo */}
-        <div className="relative z-10 flex flex-col justify-between p-14 w-full">
-          <HeroContent />
+        {/* Logo fixo no topo */}
+        <div className="absolute top-10 left-14 z-20">
+          <Logo />
+        </div>
+        {/* Selo topo-direita */}
+        <div className="absolute top-11 right-12 z-20 text-[10px] font-black text-white/50 tracking-[0.3em] uppercase">
+          Gestão • Indicadores • Operação
         </div>
 
-        <div className="absolute top-6 right-10 z-20 text-[10px] font-black text-white/50 tracking-[0.3em] uppercase">
-          Gestão • Indicadores • Operação
+        {/* Conteúdo centralizado verticalmente */}
+        <div className="relative z-10 flex flex-col justify-center h-full w-full px-14">
+          <HeroBody />
         </div>
       </div>
 
       {/* Mobile: hero compacto no topo */}
-      <div className="lg:hidden relative w-full h-[26vh] min-h-[180px] overflow-hidden bg-[#0A1A2F]">
+      <div className="lg:hidden relative w-full h-[28vh] min-h-[190px] overflow-hidden bg-[#0A1A2F]">
         <div className="absolute inset-0 bg-gradient-to-br from-[#0A2742] via-[#0E3A66] to-[#06101D]" />
         <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-sky-500/25 blur-3xl drift" />
         <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-white pointer-events-none" />
-        <div className="relative z-10 flex flex-col justify-center h-full px-6 gap-3">
-          <HeroContent compact />
-          <p className="text-white/80 text-sm font-bold max-w-xs">{slides[activePhrase].title}</p>
+        <div className="absolute top-4 left-4 z-20">
+          <Logo small />
+        </div>
+        <div className="relative z-10 flex flex-col justify-center h-full px-6">
+          <div className="inline-flex items-center gap-2 mb-2 w-fit bg-white/10 px-3 py-1 rounded-full border border-white/15">
+            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+            <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/90">{slides[activePhrase].tag}</span>
+          </div>
+          <p className="text-white text-2xl font-black uppercase italic tracking-tight max-w-xs">{slides[activePhrase].title}</p>
         </div>
       </div>
 
