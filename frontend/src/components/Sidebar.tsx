@@ -44,13 +44,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
 
   const linkClass = ({ isActive }: { isActive: boolean }) => `
     flex items-center px-4 py-2.5 text-xs font-bold rounded-lg transition-all text-left
-    ${isActive ? 'bg-red-600 text-white shadow-lg shadow-red-900/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
+    ${isActive ? 'bg-[#1E73C8] text-white shadow-lg shadow-sky-900/40' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
     ${isCollapsed ? 'justify-center' : ''}
   `;
 
   const mobileLinkClass = ({ isActive }: { isActive: boolean }) => `
     flex items-center transition-all text-left w-full
-    ${isActive ? 'bg-red-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}
+    ${isActive ? 'bg-[#1E73C8] text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}
   `;
 
   // ===== Render links (compartilhado entre desktop e drawer mobile) =====
@@ -553,18 +553,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
         </button>
 
         <div className="p-4">
-          <div className={`flex flex-col transition-all duration-300 ${isCollapsed ? 'items-center' : ''}`}>
-            {isCollapsed ? (
-              <div className="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center shadow-lg">
-                <span className="text-2xl font-black text-white tracking-tighter">M</span>
-              </div>
-            ) : (
-              <div className="bg-red-600 p-4 rounded-xl shadow-lg border border-red-500/30">
-                <img
-                  src="/Logo-Empresa.png"
-                  alt="EMPRESA Logo"
-                  className="w-full h-auto object-contain"
-                />
+          <div className={`flex items-center gap-3 transition-all duration-300 ${isCollapsed ? 'justify-center' : ''}`}>
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#1E73C8] to-[#0E3A66] flex items-center justify-center shadow-lg shrink-0">
+              <Building2 className="w-6 h-6 text-white" />
+            </div>
+            {!isCollapsed && (
+              <div className="leading-tight">
+                <div className="text-sm font-black text-white tracking-tight">Portal</div>
+                <div className="text-[9px] font-bold text-sky-300/80 uppercase tracking-[0.28em]">Corporativo</div>
               </div>
             )}
           </div>
@@ -575,7 +571,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
         </nav>
 
         <div className="p-4 border-t border-slate-800">
-          <button onClick={onLogout} className={`flex w-full items-center px-4 py-3 text-xs font-bold text-red-400 rounded-lg hover:bg-red-900/20 transition-colors uppercase tracking-widest ${isCollapsed ? 'justify-center' : ''}`}>
+          <button onClick={onLogout} className={`flex w-full items-center px-4 py-3 text-xs font-bold text-slate-400 rounded-lg hover:bg-slate-800 hover:text-white transition-colors uppercase tracking-widest ${isCollapsed ? 'justify-center' : ''}`}>
             <LogOut className={`w-4 h-4 ${!isCollapsed ? 'mr-3' : ''}`} />
             {!isCollapsed && "Sair"}
           </button>
@@ -624,7 +620,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
         </button>
 
         <div style={{
-          background: '#dc2626',
+          background: '#1E73C8',
           padding: '4px 14px',
           borderRadius: '6px',
           fontWeight: 900,
@@ -632,7 +628,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
           fontSize: '16px',
           letterSpacing: '0.5px',
         }}>
-          EMPRESA
+          Portal
         </div>
 
         <button
@@ -641,7 +637,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
           style={{
             background: 'transparent',
             border: 'none',
-            color: '#f87171',
+            color: '#94a3b8',
             padding: '8px',
             borderRadius: '8px',
             cursor: 'pointer',
@@ -692,17 +688,17 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
           justifyContent: 'space-between',
           padding: '14px 16px',
           borderBottom: '1px solid #1e293b',
-          background: 'linear-gradient(135deg, #1a0505 0%, #4a0404 100%)',
+          background: 'linear-gradient(135deg, #0A2742 0%, #0E3A66 100%)',
         }}>
           <div style={{
-            background: '#dc2626',
+            background: '#1E73C8',
             padding: '4px 14px',
             borderRadius: '6px',
             fontWeight: 900,
             color: '#fff',
             fontSize: '16px',
           }}>
-            EMPRESA
+            Portal
           </div>
           <button
             onClick={closeMobile}
@@ -743,7 +739,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
               padding: '12px',
               background: 'rgba(127, 29, 29, 0.2)',
               border: '1px solid rgba(248, 113, 113, 0.3)',
-              color: '#f87171',
+              color: '#94a3b8',
               fontWeight: 700,
               fontSize: '13px',
               borderRadius: '8px',
@@ -827,7 +823,7 @@ const SidebarSection: React.FC<{ title: string, icon?: React.ReactNode, children
         onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = isOpen ? '#e2e8f0' : '#94a3b8'; (e.currentTarget as HTMLButtonElement).style.background = isOpen ? 'rgba(255,255,255,0.05)' : 'transparent'; }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
-          {icon && <span style={{ color: isOpen ? '#f87171' : '#64748b', flexShrink: 0, display: 'flex' }}>{icon}</span>}
+          {icon && <span style={{ color: isOpen ? '#38bdf8' : '#64748b', flexShrink: 0, display: 'flex' }}>{icon}</span>}
           <span style={{ textAlign: 'left', letterSpacing: '0.02em' }}>{title}</span>
         </div>
         {isOpen
