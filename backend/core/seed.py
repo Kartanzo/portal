@@ -395,6 +395,10 @@ def ensure_assumed_tables() -> None:
         # Colunas que podem faltar em tabelas pré-existentes (ALTER tolerante por coluna).
         for tbl, col, typ in [
             ("action_plan_items", "updated_by", "UUID"),
+            ("implementation_schedule_items", "created_by", "UUID"),
+            ("implementation_schedule_items", "is_active", "BOOLEAN DEFAULT TRUE"),
+            ("implementation_schedule_items", "waiting_for_return", "TEXT[]"),
+            ("sac_anexos", "comentario_id", "INTEGER"),
         ]:
             try:
                 cur.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} {typ}")
