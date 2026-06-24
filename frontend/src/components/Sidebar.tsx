@@ -100,21 +100,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
             {showText && "Visão Geral"}
           </NavLink>
         )}
-        {/* Eventos — álbum visível a todos os usuários */}
-        <NavLink to="/eventos" className={lc} style={mobileStyle} onClick={onClick} title={!showText ? "Eventos" : ""}>
-          <CalendarDays className={`w-4 h-4 ${iconMargin}`} />
-          {showText && "Eventos"}
-        </NavLink>
-        {/* Catálogo — visível a todos os usuários */}
-        <NavLink to="/catalogo" className={lc} style={mobileStyle} onClick={onClick} title={!showText ? "Ficha Técnica" : ""}>
-          <BookOpen className={`w-4 h-4 ${iconMargin}`} />
-          {showText && "Ficha Técnica"}
-        </NavLink>
-        {/* Catálogo de Fichas — visível a todos os usuários */}
-        <NavLink to="/catalogo-fichas" className={lc} style={mobileStyle} onClick={onClick} title={!showText ? "Catálogo de Fichas" : ""}>
-          <FileText className={`w-4 h-4 ${iconMargin}`} />
-          {showText && "Catálogo de Fichas"}
-        </NavLink>
+        {/* Itens de Marketing (Eventos / Ficha Técnica / Catálogo de Fichas) removidos do menu */}
 
         {showText && (
           <button type="button" onClick={toggleAll} style={{
@@ -296,25 +282,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
           </SectorGroup>
         )}
 
-        {/* ── Marketing ── */}
-        {(hasPermission('eventos_admin') || hasPermission('marketing_ficha_tecnica')) && (
-          <SectorGroup label="Marketing" isCollapsed={mobile ? false : isCollapsed} open={sectorsOpen.marketing} onToggle={() => toggleSector('marketing')}>
-            <div className="space-y-1">
-              {hasPermission('eventos_admin') && (
-                <NavLink to="/marketing/eventos" className={lc} style={mobileStyle} onClick={onClick}>
-                  <CalendarDays className={`w-4 h-4 ${iconMargin}`} />
-                  {showText && "Gerenciar Álbum"}
-                </NavLink>
-              )}
-              {hasPermission('marketing_ficha_tecnica') && (
-                <NavLink to="/marketing/ficha-tecnica" className={lc} style={mobileStyle} onClick={onClick}>
-                  <FileText className={`w-4 h-4 ${iconMargin}`} />
-                  {showText && "Gerenciar PDFs"}
-                </NavLink>
-              )}
-            </div>
-          </SectorGroup>
-        )}
+        {/* ── Marketing ── removido do menu ── */}
 
         {/* ── Comercial ── */}
         {(hasPermission('sac') || hasPermission('metas_faturamento')) && (
