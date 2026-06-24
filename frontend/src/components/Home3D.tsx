@@ -13,7 +13,7 @@ import * as THREE from 'three';
 
 // Logo component inside the cube
 const EmpresaLogoInside = ({ isHovered }: { isHovered: boolean }) => {
-    const texture = useLoader(THREE.TextureLoader, "/Logo-EMPRESA.png");
+    const texture = useLoader(THREE.TextureLoader, "/Logo-Empresa.png");
     const meshRef = useRef<THREE.Mesh>(null!);
 
     useFrame((state) => {

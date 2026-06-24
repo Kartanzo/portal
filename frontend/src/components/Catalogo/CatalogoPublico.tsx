@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight, BookOpen, Maximize2, Minimize2, Download, X,
 import HTMLFlipBook from 'react-pageflip';
 import { api } from '../../app_api';
 
-const LOGO = '/Logo-EMPRESA.png';
+const LOGO = '/Logo-Empresa.png';
 // Tamanho-base do design da página (a ficha foi desenhada nesta escala). O conteúdo é
 // renderizado neste tamanho fixo e escalado via transform p/ caber em `dims`, assim
 // fontes/paddings encolhem junto com a página (igual ao zoom de um PDF) — evita que em

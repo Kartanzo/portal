@@ -1166,7 +1166,7 @@ ${containersHtml}
         // Logo EMPRESA (mesmo fetch do SOP)
         let logoB64: string | null = null;
         try {
-            const resp = await fetch('/Logo-EMPRESA.png');
+            const resp = await fetch('/Logo-Empresa.png');
             const blob = await resp.blob();
             logoB64 = await new Promise<string>((res) => {
                 const r = new FileReader();

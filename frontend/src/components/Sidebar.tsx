@@ -561,7 +561,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
             ) : (
               <div className="bg-red-600 p-4 rounded-xl shadow-lg border border-red-500/30">
                 <img
-                  src="/Logo-EMPRESA.png"
+                  src="/Logo-Empresa.png"
                   alt="EMPRESA Logo"
                   className="w-full h-auto object-contain"
                 />

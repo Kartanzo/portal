@@ -1950,7 +1950,7 @@ const ProgramacaoPage: React.FC = () => {
 
     let logoB64: string | null = null;
     try {
-      const resp = await fetch('/Logo-EMPRESA.png'); const blob = await resp.blob();
+      const resp = await fetch('/Logo-Empresa.png'); const blob = await resp.blob();
       logoB64 = await new Promise<string>((res) => { const r = new FileReader(); r.onloadend = () => res(r.result as string); r.readAsDataURL(blob); });
     } catch { /* sem logo */ }
 
@@ -2037,7 +2037,7 @@ const ProgramacaoPage: React.FC = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const W = doc.internal.pageSize.getWidth(); const H = doc.internal.pageSize.getHeight();
     let logoB64: string | null = null;
-    try { const resp = await fetch('/Logo-EMPRESA.png'); const blob = await resp.blob(); logoB64 = await new Promise<string>((res) => { const r = new FileReader(); r.onloadend = () => res(r.result as string); r.readAsDataURL(blob); }); } catch { /* */ }
+    try { const resp = await fetch('/Logo-Empresa.png'); const blob = await resp.blob(); logoB64 = await new Promise<string>((res) => { const r = new FileReader(); r.onloadend = () => res(r.result as string); r.readAsDataURL(blob); }); } catch { /* */ }
     const drawHF = (pageNum: number, total: number) => {
       doc.setFillColor(...ACCENT); doc.rect(0, 0, W, 3, 'F');
       if (logoB64) { doc.setFillColor(...ACCENT); doc.roundedRect(8, 6, 46, 18, 2, 2, 'F'); try { doc.addImage(logoB64, 'PNG', 10, 8, 42, 14); } catch { /* */ } }

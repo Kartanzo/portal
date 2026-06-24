@@ -30,12 +30,12 @@ export const EMPRESA_DARK: [number, number, number] = [30, 41, 59];
 export const EMPRESA_SOFT: [number, number, number] = [241, 245, 249];
 
 /**
- * Carrega o logo oficial EMPRESA (public/Logo-EMPRESA.png) como dataURL base64.
+ * Carrega o logo oficial EMPRESA (public/Logo-Empresa.png) como dataURL base64.
  * Retorna null se nao for possivel carregar (PDF segue sem logo).
  */
 export const carregarLogoEmpresa = async (): Promise<string | null> => {
     try {
-        const resp = await fetch('/Logo-EMPRESA.png');
+        const resp = await fetch('/Logo-Empresa.png');
         const blob = await resp.blob();
         return await new Promise<string>((res) => {
             const r = new FileReader();
