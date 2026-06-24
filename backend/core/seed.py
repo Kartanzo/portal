@@ -239,11 +239,40 @@ _DOMAIN_SEEDS = [
 ]
 
 
+def _ensure_app_tables() -> None:
+    """Garante as tabelas dos ensure_* do startup.
+
+    O bloco ensure_* do _startup_db fica dentro de um try; se algo antes dele falhar, ele é
+    pulado e tabelas como `sectors` não nascem. Aqui re-garantimos cada uma (isolado por
+    try/except) para o seed e as páginas funcionarem mesmo nesse caso.
+    """
+    ensures = [
+        ("modulo.sectors", "ensure_sectors_table"),
+        ("modulo.plano_producao", "ensure_plano_producao_table"),
+        ("modulo.whatsapp_config", "ensure_whatsapp_tables"),
+        ("modulo.importation_v2", "ensure_importacao_v2_modelos_table"),
+        ("modulo.simulador_importacao", "ensure_simulador_cambio_table"),
+        ("modulo.catalogo", "ensure_catalogo_tables"),
+        ("modulo.comissao", "ensure_comissao_tables"),
+        ("modulo.analise_credito", "ensure_analise_credito_tables"),
+        ("modulo.marketing_ficha_tecnica", "ensure_ficha_tecnica_tables"),
+    ]
+    import importlib
+    for mod_name, fn_name in ensures:
+        try:
+            getattr(importlib.import_module(mod_name), fn_name)()
+        except Exception as e:
+            logger.warning(f"ensure {mod_name}.{fn_name} no seed: {e}")
+
+
 def run_dummy_seed() -> None:
     """Popula dados de demonstração de 2026. Só roda com SEED_DUMMY ligado. Idempotente."""
     if not seed_enabled():
         logger.info("SEED_DUMMY desligado — pulando seed de dados dummy.")
         return
+
+    # 0) Garante tabelas que o startup pode não ter criado (bloco ensure_* abortado).
+    _ensure_app_tables()
 
     # 1) Núcleo: admin + setores + categorias + chamados + planos de ação.
     conn = get_db_connection()
