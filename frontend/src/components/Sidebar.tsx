@@ -387,7 +387,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
         )}
 
         {/* ── Financeiro ── */}
-        {(hasPermission('financeiro_base_orcado') || hasPermission('financeiro_base_realizado') || hasPermission('financeiro_orcado') || hasPermission('financeiro_orcado_realizado') || hasPermission('financeiro_dre') || hasPermission('financeiro_plano_contas') || hasPermission('financeiro_dre2025') || hasPermission('financeiro_comissao') || hasPermission('financeiro_analise_credito')) && (
+        {(hasPermission('financeiro_base_orcado') || hasPermission('financeiro_base_realizado') || hasPermission('financeiro_orcado') || hasPermission('financeiro_orcado_realizado') || hasPermission('financeiro_dre') || hasPermission('financeiro_plano_contas') || hasPermission('financeiro_dre2025')) && (
           <SectorGroup label="Financeiro" isCollapsed={mobile ? false : isCollapsed} open={sectorsOpen.financeiro} onToggle={() => toggleSector('financeiro')}>
           <SidebarSection title="Gestão Financeira" icon={<PieChart style={{width:'14px',height:'14px'}}/>} isCollapsed={mobile ? false : isCollapsed} defaultOpen={mobile} forceOpen={allOpen ? true : undefined}>
             <div className="space-y-1">
@@ -425,18 +425,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
                 <NavLink to="/financeiro/plano-contas" className={lc} style={mobileStyle} onClick={onClick}>
                   <ClipboardList className={`w-4 h-4 ${iconMargin}`} />
                   {showText && "Plano de Contas"}
-                </NavLink>
-              )}
-              {hasPermission('financeiro_comissao') && (
-                <NavLink to="/financeiro/comissao" className={lc} style={mobileStyle} onClick={onClick}>
-                  <PieChart className={`w-4 h-4 ${iconMargin}`} />
-                  {showText && "Comissão"}
-                </NavLink>
-              )}
-              {hasPermission('financeiro_analise_credito') && (
-                <NavLink to="/financeiro/analise-credito" className={lc} style={mobileStyle} onClick={onClick}>
-                  <ShieldCheck className={`w-4 h-4 ${iconMargin}`} />
-                  {showText && "Análise de Crédito"}
                 </NavLink>
               )}
               {hasPermission('financeiro_dre2025') && (

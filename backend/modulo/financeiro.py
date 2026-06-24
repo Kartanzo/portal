@@ -491,7 +491,7 @@ def get_financeiro_drilldown(row_id: str, month: str, departamento: str = "Total
         cur = conn.cursor()
         bid = base_id
         if not bid:
-            cur.execute("SELECT id FROM financeiro_bases WHERE type='orcado' ORDER BY uploaded_at DESC LIMIT 1")
+            cur.execute("SELECT id FROM financeiro_bases WHERE type='orcado' AND is_active=TRUE ORDER BY uploaded_at DESC LIMIT 1")
             row = cur.fetchone()
             bid = str(row[0]) if row else None
             
@@ -533,7 +533,7 @@ def get_report_orcado(base_id: str = None, departamento: str = "Total", user_id:
             base_query_part = "b.id = %s"
             params.append(base_id)
         else:
-            base_query_part = "b.id = (SELECT id FROM financeiro_bases WHERE type='orcado' ORDER BY uploaded_at DESC LIMIT 1)"
+            base_query_part = "b.id = (SELECT id FROM financeiro_bases WHERE type='orcado' AND is_active=TRUE ORDER BY uploaded_at DESC LIMIT 1)"
 
         dept_val = None
         if departamento and departamento != "Total":

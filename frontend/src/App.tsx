@@ -57,8 +57,6 @@ import RelatorioOrcadoRealizado from './components/Financeiro/RelatorioOrcadoRea
 import RelatorioDRE from './components/Financeiro/RelatorioDRE';
 import PlanoContas from './components/Financeiro/PlanoContas';
 import DRE2025 from './components/Financeiro/DRE2025';
-import Comissao from './components/Financeiro/Comissao';
-import AnaliseCredito from './components/Financeiro/AnaliseCredito';
 import SectorManagement from './components/SectorManagement';
 
 // Módulo SAC
@@ -283,8 +281,6 @@ function App() {
                     <Route path="/financeiro/dre" element={<ProtectedRoute module="financeiro_dre"><RelatorioDRE user={user} /></ProtectedRoute>} />
                     <Route path="/financeiro/plano-contas" element={<ProtectedRoute module="financeiro_plano_contas"><PlanoContas /></ProtectedRoute>} />
                     <Route path="/financeiro/dre-2025" element={<ProtectedRoute module="financeiro_dre2025"><DRE2025 user={user} /></ProtectedRoute>} />
-                    <Route path="/financeiro/comissao" element={<ProtectedRoute module="financeiro_comissao"><Comissao user={user} /></ProtectedRoute>} />
-                    <Route path="/financeiro/analise-credito" element={<ProtectedRoute module="financeiro_analise_credito"><AnaliseCredito user={user} /></ProtectedRoute>} />
 
                     {/* Inter-Sector Tickets */}
                     <Route path="/inter-sector-info" element={<ProtectedRoute module="inter_sector_tickets"><InterSectorInfo /></ProtectedRoute>} />
