@@ -37,6 +37,12 @@ async def _startup_db():
     try:
         # Initial Schema Setup
         cur.execute(f"CREATE SCHEMA IF NOT EXISTS {db_schema}")
+        conn.commit()
+
+        # Bootstrap de tabelas que o codigo assume existir mas nao cria (users,
+        # action_plans, ticket_categories) + tickets completa. Permite subir em banco vazio.
+        from core.seed import ensure_bootstrap_tables
+        ensure_bootstrap_tables()
 
         # Tickets Table (If not exists - simplified check)
         cur.execute("""
@@ -251,6 +257,13 @@ async def _startup_db():
         ensure_session_table()
     except Exception as e:
         print(f"Session table setup error: {e}")
+
+    # Seed de dados dummy de 2026 (so roda com SEED_DUMMY=1). Idempotente.
+    try:
+        from core.seed import run_dummy_seed
+        run_dummy_seed()
+    except Exception as e:
+        print(f"Dummy seed error: {e}")
 
 
 def _ensure_sac_tables():
