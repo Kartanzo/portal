@@ -81,10 +81,9 @@ def carregar_produtos(refresh: bool = False) -> List[dict]:
 
     UNIDADES = ["PC", "UN", "CX", "KG"]
     AGRUP = [("01", "INJETADOS"), ("02", "SOPRADOS"), ("03", "MONTADOS"), ("04", "ACESSORIOS")]
-    DESCS = ["BENGALA", "CADEIRA DE BANHO", "ANDADOR ALUMINIO", "MULETA AXILAR",
-             "GARRAFA TERMICA", "BOLSA TERMICA", "ALMOFADA", "TRAVESSEIRO",
-             "FRASCO PET", "TAMPA ROSQUEAVEL", "PUXADOR", "SUPORTE LATERAL",
-             "BASE INFERIOR", "ENCARTE TABA", "ALMA ESTRUTURAL", "PERFIL TUBULAR"]
+    DESCS = ["Produto Demo", "Componente", "Peca Modelo", "Conjunto", "Item Padrao",
+             "Modulo", "Estrutura", "Perfil", "Base", "Suporte", "Tampa", "Frasco",
+             "Painel", "Kit Demo", "Unidade", "Bloco"]
 
     # códigos garantidos (os do seed) + extras determinísticos
     cods_seed = [cod for (_nome, cod, _ph) in SEED_MAQUINA_TEMPOS]

@@ -265,6 +265,44 @@ def _ensure_app_tables() -> None:
             logger.warning(f"ensure {mod_name}.{fn_name} no seed: {e}")
 
 
+def reset_enabled() -> bool:
+    return os.environ.get("SEED_RESET", "").strip().lower() in ("1", "true", "yes", "on")
+
+
+# Tabelas semeadas + caches. TRUNCATE CASCADE limpa também os dependentes (FKs).
+_RESET_TABLES = [
+    "tickets", "action_plans",
+    "financeiro_justificativas", "financeiro_data_orcado",
+    "financeiro_data_realizado", "financeiro_bases",
+    "rh_movimentacoes", "rh_ferias", "rh_banco_horas", "rh_documentos",
+    "rh_candidatos", "rh_vagas", "rh_equipamentos", "rh_colaboradores", "rh_sindicatos",
+    "sac_comentarios", "sac_ticket_produtos", "sac_tickets",
+    "inter_sector_ticket_participants", "inter_sector_ticket_updates", "inter_sector_tickets",
+    "eventos_album_fotos",
+    "sop_dashboard_cache", "otimizador_faturamento_cache",
+]
+
+
+def _reset_seed_data() -> None:
+    """Apaga os dados semeados + caches (para repopular do zero). Cada tabela em
+    transação própria — se uma não existir/falhar, as demais continuam.
+    NÃO apaga `users` (mantém o admin)."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    apagadas = 0
+    for t in _RESET_TABLES:
+        try:
+            cur.execute(f"TRUNCATE TABLE {t} RESTART IDENTITY CASCADE")
+            conn.commit()
+            apagadas += 1
+        except Exception as e:
+            conn.rollback()
+            logger.warning(f"reset {t}: {e}")
+    cur.close()
+    conn.close()
+    logger.info(f"SEED_RESET: {apagadas} tabelas limpas (dados antigos removidos).")
+
+
 def run_dummy_seed() -> None:
     """Popula dados de demonstração de 2026. Só roda com SEED_DUMMY ligado. Idempotente."""
     if not seed_enabled():
@@ -273,6 +311,10 @@ def run_dummy_seed() -> None:
 
     # 0) Garante tabelas que o startup pode não ter criado (bloco ensure_* abortado).
     _ensure_app_tables()
+
+    # 0.1) SEED_RESET=1 -> apaga tudo que foi semeado antes (e os caches) e repopula.
+    if reset_enabled():
+        _reset_seed_data()
 
     # 1) Núcleo: admin + setores + categorias + chamados + planos de ação.
     conn = get_db_connection()

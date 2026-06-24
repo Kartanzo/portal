@@ -43,14 +43,8 @@ def get_password_hash(password):
 CREDENTIALS_PATH = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '')
 PROJECT_ID = 'projeto-rpa-empresa-2023'
 
-# Importation constants
-IMPORTED_ITEM_CODES = [
-    "10400166", "10400167", "10400169", "10400170", "10400171", "10400176", "10400178", "10400179",
-    "10400196", "10400289", "10400313", "10400377", "10400626", "10400628", "10400629", "10400630",
-    "10400631", "10400632", "10400689", "10400750",
-    "10400944", "10400945", "10400946", "10400947", "10400948", "10400949", "10400950", "10400951",
-    "10400952", "10400953"
-]
+# Importation constants — códigos fictícios (prefixo 104), distintos do pool dummy.PRODUTOS.
+IMPORTED_ITEM_CODES = [f"104900{i:02d}" for i in range(1, 31)]
 FILE_PARAMETROS = "ParametrosImportacao.xlsx"
 DIAS_ESTOQUE_ALVO = 180
 

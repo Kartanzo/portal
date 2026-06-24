@@ -81,20 +81,21 @@ CLIENTES = [
     "Varejista Tau ME", "Mercantil Upsilon SA",
 ]
 
-# (codigo, descricao, unidade, categoria)
+# (codigo, descricao, unidade, categoria) — TUDO fictício; prefixo "104" exigido por
+# filtros SQL (CODIGO_PRODUTO LIKE '104%'). Nada de catálogo/marca real.
 PRODUTOS = [
-    ("10401085", "BENGALA DOBRAVEL COM REGULAGEM", "PC", "Mobilidade"),
-    ("10400044", "BOLSA TERMICA 2L", "UN", "Termico"),
-    ("10402210", "ALMOFADA ORTOPEDICA", "UN", "Conforto"),
-    ("10403311", "ANDADOR ALUMINIO DOBRAVEL", "PC", "Mobilidade"),
-    ("10404120", "MOCHILA TERMICA 1L", "UN", "Termico"),
-    ("10405533", "CADEIRA DE BANHO", "PC", "Mobilidade"),
-    ("10406741", "TRAVESSEIRO VISCOELASTICO", "UN", "Conforto"),
-    ("10407852", "GARRAFA TERMICA INOX", "UN", "Termico"),
-    ("10408963", "MULETA AXILAR PAR", "PC", "Mobilidade"),
-    ("10409074", "COLCHAO CASTON D33", "UN", "Conforto"),
-    ("10410185", "BOLSA AGUA QUENTE", "UN", "Termico"),
-    ("10411296", "CADEIRA DE RODAS DOBRAVEL", "PC", "Mobilidade"),
+    ("10400001", "Produto Demo Alfa", "UN", "Linha A"),
+    ("10400002", "Produto Demo Beta", "PC", "Linha A"),
+    ("10400003", "Produto Demo Gama", "UN", "Linha B"),
+    ("10400004", "Produto Demo Delta", "PC", "Linha B"),
+    ("10400005", "Produto Demo Epsilon", "UN", "Linha C"),
+    ("10400006", "Produto Demo Zeta", "PC", "Linha C"),
+    ("10400007", "Produto Demo Eta", "UN", "Linha A"),
+    ("10400008", "Produto Demo Teta", "PC", "Linha B"),
+    ("10400009", "Produto Demo Iota", "UN", "Linha C"),
+    ("10400010", "Produto Demo Kappa", "PC", "Linha A"),
+    ("10400011", "Produto Demo Lambda", "UN", "Linha B"),
+    ("10400012", "Produto Demo Mi", "PC", "Linha C"),
 ]
 
 # (codigo, nome)
@@ -117,7 +118,7 @@ CIDADES = ["Sao Paulo", "Campinas", "Santos", "Rio de Janeiro", "Belo Horizonte"
 
 MAQUINAS = [(f"MAQ-{i:02d}", f"Maquina {i:02d}") for i in range(1, 11)]
 
-CATEGORIAS_PRODUTO = ["Mobilidade", "Termico", "Conforto", "Acessorios", "Linha Hospitalar"]
+CATEGORIAS_PRODUTO = ["Linha A", "Linha B", "Linha C", "Linha D", "Linha E"]
 
 STATUS_PEDIDO = ["Faturado", "Em Aberto", "Pendente", "Cancelado"]
 
