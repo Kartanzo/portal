@@ -224,6 +224,7 @@ _ASSUMED_TABLES = [
             blocked_by_user_id UUID REFERENCES users(id),
             waiting_for_return TEXT[],
             created_by UUID REFERENCES users(id),
+            updated_by UUID REFERENCES users(id),
             is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -390,6 +391,18 @@ def ensure_assumed_tables() -> None:
             except Exception as e:
                 conn.rollback()
                 logger.warning(f"ensure_assumed_tables: {nome} falhou: {e}")
+
+        # Colunas que podem faltar em tabelas pré-existentes (ALTER tolerante por coluna).
+        for tbl, col, typ in [
+            ("action_plan_items", "updated_by", "UUID"),
+        ]:
+            try:
+                cur.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} {typ}")
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                logger.warning(f"ensure_assumed_tables ALTER {tbl}.{col}: {e}")
+
         logger.info(f"ensure_assumed_tables OK: {criadas}/{len(_ASSUMED_TABLES)} tabelas garantidas.")
     finally:
         cur.close()
