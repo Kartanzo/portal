@@ -89,11 +89,18 @@ def ensure_bootstrap_tables() -> None:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS ticket_categories (
                 id SERIAL PRIMARY KEY,
+                sector VARCHAR(255),
                 name VARCHAR(150) NOT NULL UNIQUE,
                 is_active BOOLEAN DEFAULT TRUE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # tickets.py/category_controller leem tc.sector — garante a coluna em tabelas antigas
+        try:
+            cur.execute("ALTER TABLE ticket_categories ADD COLUMN IF NOT EXISTS sector VARCHAR(255)")
+        except Exception as e:
+            logger.warning(f"ALTER ticket_categories sector: {e}")
+            conn.rollback()
 
         # tickets COMPLETA (superset do DDL simplificado do _startup_db). Como o startup usa
         # CREATE TABLE IF NOT EXISTS, criar aqui primeiro faz a versão completa prevalecer.
@@ -419,8 +426,8 @@ def _seed_sectors(cur) -> None:
 def _seed_categories(cur) -> None:
     for nome in TICKET_CATEGORIES:
         cur.execute(
-            "INSERT INTO ticket_categories (name) VALUES (%s) ON CONFLICT (name) DO NOTHING",
-            (nome,),
+            "INSERT INTO ticket_categories (sector, name) VALUES (%s, %s) ON CONFLICT (name) DO NOTHING",
+            ("T.I", nome),
         )
 
 
