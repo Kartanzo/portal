@@ -122,6 +122,50 @@ def _dummy_base_full() -> dict:
     }
 
 
+def seed_dummy_dre2025(admin_id: str) -> dict:
+    """Insere 1 base \"DRE 2026 (dummy)\" em `dre2025_bases` com dre_data/sheets_data
+    no mesmo formato consumido pelo frontend (linhas de conta x 12 meses).
+
+    Reaproveita os geradores dummy já existentes (_dummy_dre_data/_dummy_sheets_data).
+    Idempotente: se já existir uma base ativa com esse nome, não duplica (reativa se
+    estiver inativa). Abre e fecha a própria conexão; não altera rotas/permissões.
+    """
+    nome = f"DRE {dummy.ANO_BASE} (dummy)"
+    dre_data = _dummy_dre_data()
+    sheets_data = _dummy_sheets_data()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Idempotência: procura base com o mesmo nome (ativa ou não).
+        cur.execute("SELECT id, is_active FROM dre2025_bases WHERE name = %s ORDER BY created_at LIMIT 1", (nome,))
+        existente = cur.fetchone()
+        if existente:
+            base_id, ativa = existente
+            if not ativa:
+                cur.execute("UPDATE dre2025_bases SET is_active = TRUE WHERE id = %s", (base_id,))
+                conn.commit()
+            return {"ok": True, "criado": False, "id": str(base_id), "name": nome}
+
+        cur.execute(
+            """
+            INSERT INTO dre2025_bases (name, dre_data, sheets_data, created_by, is_active)
+            VALUES (%s, %s, %s, %s, TRUE)
+            RETURNING id, created_at
+            """,
+            (nome, json.dumps(dre_data), json.dumps(sheets_data), admin_id),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return {"ok": True, "criado": True, "id": str(row[0]), "name": nome,
+                "linhas_dre": len(dre_data), "linhas_base_analitica": len(sheets_data.get("Base Analítica", []))}
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+
 @router.get("/dre2025/bases")
 def list_dre2025_bases(user_id: Optional[str] = Depends(get_user_id_from_session)):
     if not check_module_permission(user_id or '', MODULE_ID):

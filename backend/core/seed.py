@@ -512,6 +512,12 @@ _DOMAIN_SEEDS = [
     ("maquinas", "modulo.maquinas", "seed_dummy_maquinas"),
     ("estrategico", "modulo.action_plans", "seed_dummy_estrategico"),
     ("moq", "modulo.importation_v2", "seed_dummy_moq"),
+    ("importacao_v2", "modulo.importation_v2", "seed_dummy_importacao_v2"),
+    ("catalogo", "modulo.catalogo", "seed_dummy_catalogo"),
+    ("comissao", "modulo.comissao", "seed_dummy_comissao"),
+    ("dre2025", "modulo.dre2025", "seed_dummy_dre2025"),
+    ("implementation", "modulo.implementation", "seed_dummy_implementation"),
+    ("simulador", "modulo.simulador_importacao", "seed_dummy_simulador"),
 ]
 
 
@@ -557,6 +563,13 @@ _RESET_TABLES = [
     "eventos_album_fotos",
     "maquina_log", "estrutura_item", "estrutura_versao", "maquinas",
     "action_plan_items", "importacao_v2_moq",
+    "catalogo_produto", "catalogo_biblioteca", "catalogo_imagem",
+    "catalogo_modelo", "catalogo_base_produtos", "catalogo_base_meta",
+    "comissao_documento", "comissao_registro", "comissao_sync",
+    "dre2025_bases",
+    "implementation_schedule_items", "implementation_schedules",
+    "simulador_cambio",
+    "importacao_v2_order_lists", "importacao_v2_container_modelos", "importacao_v2_modelos",
     "sop_dashboard_cache", "otimizador_faturamento_cache",
 ]
 
@@ -589,6 +602,14 @@ def run_dummy_seed() -> None:
 
     # 0) Garante tabelas que o startup pode não ter criado (bloco ensure_* abortado).
     _ensure_app_tables()
+
+    # 0.05) Popula role_permissions (o seed do startup é bugado: o JSON é lista mas
+    # o código faz .items() -> aborta). Idempotente (ON CONFLICT DO NOTHING).
+    try:
+        from modulo.implementation import seed_role_permissions
+        seed_role_permissions()
+    except Exception as e:
+        logger.warning(f"seed_role_permissions: {e}")
 
     # 0.1) SEED_RESET=1 -> apaga tudo que foi semeado antes (e os caches) e repopula.
     if reset_enabled():

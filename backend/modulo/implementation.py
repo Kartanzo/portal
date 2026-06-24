@@ -509,6 +509,151 @@ def delete_implementation_schedule_attachment(attachment_id: UUID, user_id: Opti
         cur.close()
         conn.close()
 
+def seed_dummy_implementation(admin_id: str) -> dict:
+    """Popula dados dummy de Cronograma de Implementação (idempotente).
+
+    Cria 2 cronogramas (implementation_schedules) e vários itens
+    (implementation_schedule_items) com datas em 2026, status variados e
+    responsible/created_by = admin_id. Idempotente: usa o macro_theme como
+    marca de seed; se já existir um cronograma com esse macro_theme, não recria.
+    """
+    SEED_TAG = "SEED_DUMMY"
+    conn = get_db_connection()
+    cur = conn.cursor()
+    created_plans = 0
+    created_items = 0
+    try:
+        cur.execute(
+            "SELECT COUNT(*) FROM implementation_schedules WHERE macro_theme = %s",
+            (SEED_TAG,),
+        )
+        if cur.fetchone()[0] > 0:
+            return {"status": "skipped", "reason": "seed já existe", "plans": 0, "items": 0}
+
+        plans = [
+            {
+                "sector": "Comercial",
+                "objective": "Implantar novo CRM e padronizar o funil de vendas",
+                "items": [
+                    ("Mapear processo atual de vendas", "Fluxo documentado", "CRM",
+                     "Em Andamento", "2026-01-05", "2026-02-15"),
+                    ("Configurar pipeline no CRM", "Pipeline ativo", "CRM",
+                     "Não Iniciado", "2026-02-16", "2026-03-31"),
+                    ("Treinar equipe comercial", "Equipe capacitada", "Treinamento",
+                     "Não Iniciado", "2026-04-01", "2026-04-30"),
+                    ("Go-live e acompanhamento", "CRM em produção", "CRM",
+                     "Concluído", "2026-05-01", "2026-05-20"),
+                ],
+            },
+            {
+                "sector": "Operações",
+                "objective": "Reduzir lead time de produção em 20%",
+                "items": [
+                    ("Analisar gargalos da linha", "Relatório de gargalos", "Lean",
+                     "Em Andamento", "2026-01-10", "2026-02-28"),
+                    ("Reorganizar layout de fábrica", "Layout otimizado", "Lean",
+                     "Não Iniciado", "2026-03-01", "2026-04-15"),
+                    ("Implantar indicadores OEE", "Dashboard OEE", "BI",
+                     "Suspenso", "2026-04-16", "2026-06-30"),
+                ],
+            },
+        ]
+
+        for p in plans:
+            cur.execute(
+                """
+                INSERT INTO implementation_schedules
+                    (sector, objective, macro_theme, created_by, is_active)
+                VALUES (%s, %s, %s, %s, TRUE)
+                RETURNING id
+                """,
+                (p["sector"], p["objective"], SEED_TAG, admin_id),
+            )
+            plan_id = cur.fetchone()[0]
+            created_plans += 1
+            for actions, expected, projects, status, start, end in p["items"]:
+                cur.execute(
+                    """
+                    INSERT INTO implementation_schedule_items
+                        (implementation_schedule_id, actions, expected_result, projects,
+                         responsible, status, schedule_start, schedule_end, observation,
+                         budget_planned, budget_actual, hours_planned, hours_actual,
+                         roi_percentage, stakeholder_satisfaction, blocked_by_user_id,
+                         waiting_for_return, created_by, is_active)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+                    """,
+                    (
+                        str(plan_id), actions, expected, projects,
+                        [admin_id], status, start, end, "Item de exemplo (seed).",
+                        10000, 0, 40, 0, 0, 0, None, [], admin_id,
+                    ),
+                )
+                created_items += 1
+
+        conn.commit()
+        return {"status": "ok", "plans": created_plans, "items": created_items}
+    except Exception as e:
+        conn.rollback()
+        print(f"seed_dummy_implementation error: {e}")
+        return {"status": "error", "error": str(e)}
+    finally:
+        cur.close()
+        conn.close()
+
+
+def seed_role_permissions() -> dict:
+    """Popula a tabela role_permissions a partir de backend/role_permissions.json.
+
+    Idempotente: usa INSERT ... ON CONFLICT (role) DO NOTHING.
+    Suporta o formato real do JSON, que é uma LISTA de objetos
+    {"role": ..., "permissions": {...}} (o seed do startup falha porque
+    chama .items() esperando um dict). Resolve o caminho do JSON relativo
+    ao diretório backend/ (este arquivo está em backend/modulo/).
+    """
+    import json
+    json_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "role_permissions.json")
+    if not os.path.exists(json_path):
+        return {"status": "error", "error": f"arquivo não encontrado: {json_path}"}
+    try:
+        with open(json_path, encoding="utf-8") as f:
+            raw = json.load(f)
+    except Exception as e:
+        return {"status": "error", "error": f"falha ao ler JSON: {e}"}
+
+    # Normaliza para uma lista de (role, permissions_dict)
+    pairs = []
+    if isinstance(raw, list):
+        for entry in raw:
+            if isinstance(entry, dict) and "role" in entry:
+                pairs.append((entry["role"], entry.get("permissions", {})))
+    elif isinstance(raw, dict):
+        for role_name, perms in raw.items():
+            pairs.append((role_name, perms))
+    else:
+        return {"status": "error", "error": "formato de JSON inesperado"}
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    inserted = 0
+    try:
+        for role_name, perms in pairs:
+            cur.execute(
+                "INSERT INTO role_permissions (role, permissions) VALUES (%s, %s) ON CONFLICT (role) DO NOTHING",
+                (role_name, json.dumps(perms)),
+            )
+            inserted += cur.rowcount
+        conn.commit()
+        return {"status": "ok", "roles_in_json": len(pairs), "inserted": inserted}
+    except Exception as e:
+        conn.rollback()
+        print(f"seed_role_permissions error: {e}")
+        return {"status": "error", "error": str(e)}
+    finally:
+        cur.close()
+        conn.close()
+
+
 @router.get("/implementation-schedule-items/{item_id}/history")
 def get_implementation_schedule_history(item_id: UUID, user_id: Optional[str] = Depends(get_user_id_from_session)):
     if not check_module_permission(user_id or '', 'impl_action_plan'):

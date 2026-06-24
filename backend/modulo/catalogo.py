@@ -181,6 +181,177 @@ def ensure_catalogo_tables():
 
 
 # ─────────────────────────────────────────────
+#  Base dummy (geração determinística, sem fontes externas)
+# ─────────────────────────────────────────────
+def _gerar_linhas_base():
+    """Gera as linhas da base no MESMO formato CSV usado por base_sync
+    (linha 0 = grupos, linha 1 = nomes, linhas 2+ = produtos), a partir de
+    dummy.PRODUTOS. Retorna (linhas, colunas)."""
+    cols = [
+        ("", "CÓDIGO"),
+        ("IDENTIFICAÇÃO", "DESCRIÇÃO DO PRODUTO"),
+        ("IDENTIFICAÇÃO", "CATEGORIA"),
+        ("IDENTIFICAÇÃO", "UNIDADE"),
+        ("COMERCIAL", "STATUS"),
+        ("COMERCIAL", "PREÇO"),
+        ("LOGÍSTICA", "PESO (KG)"),
+    ]
+    grupos_row = [g for (g, _n) in cols]
+    nomes_row = [n for (_g, n) in cols]
+    linhas = [grupos_row, nomes_row]
+    for codigo, descricao, unidade, categoria in dummy.PRODUTOS:
+        r = dummy.rng("catalogo_base", codigo)
+        status = dummy.escolher(r, ["ATIVO", "ATIVO", "ATIVO", "INATIVO"])
+        preco = f"{dummy.valor(r, base=180.0, var=0.5):.2f}".replace(".", ",")
+        peso = f"{dummy.valor(r, base=2.5, var=0.6):.2f}".replace(".", ",")
+        linhas.append([codigo, descricao, categoria, unidade, status, preco, peso])
+
+    grupos_raw = linhas[0]
+    nomes = linhas[1]
+    colunas = []
+    grupo_atual = ""
+    for i, nome in enumerate(nomes):
+        g = grupos_raw[i].strip() if i < len(grupos_raw) and grupos_raw[i].strip() else None
+        if g:
+            grupo_atual = g
+        nome_l = (nome or "").strip()
+        if nome_l:
+            colunas.append({"indice": i, "grupo": grupo_atual, "nome": nome_l})
+    return linhas, colunas
+
+
+def seed_dummy_catalogo(admin_id: str) -> dict:
+    """Popula o catálogo com dados dummy para a página ter conteúdo.
+
+    Idempotente: só insere se as tabelas estiverem vazias (checa COUNT). Usa
+    conexão própria. NÃO altera assinaturas/rotas/permissões nem adiciona libs.
+
+    Popula, a partir de dummy.PRODUTOS:
+    - catalogo_base_produtos / catalogo_base_meta (mesma lógica de base_sync)
+    - catalogo_imagem (1 placeholder BYTEA mínimo)
+    - catalogo_biblioteca (1 item por produto)
+    - catalogo_modelo (2 catálogos, ambos oficiais)
+    - catalogo_produto (vincula os produtos da biblioteca a cada modelo)
+    """
+    # PNG 1x1 transparente — placeholder mínimo válido para BYTEA
+    PNG_1X1 = bytes.fromhex(
+        "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4"
+        "890000000a49444154789c6360000002000100ffff0300000600055700a30000"
+        "0000049454e44ae426082"
+    )
+    linhas, colunas = _gerar_linhas_base()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Idempotência: se já há modelos, não faz nada.
+        cur.execute("SELECT COUNT(*) FROM catalogo_modelo")
+        if (cur.fetchone()[0] or 0) > 0:
+            return {"ok": True, "skipped": True, "motivo": "catálogo já populado"}
+
+        # 1) Base de produtos (cache da "planilha") + meta de colunas
+        cur.execute("SELECT COUNT(*) FROM catalogo_base_produtos")
+        if (cur.fetchone()[0] or 0) == 0:
+            for r in linhas[2:]:
+                if not r or not (r[0] or "").strip():
+                    continue
+                codigo = r[0].strip()
+                dados = {}
+                for c in colunas:
+                    idx = c["indice"]
+                    dados[c["nome"]] = (r[idx].strip() if idx < len(r) and r[idx] is not None else "")
+                descricao = dados.get("DESCRIÇÃO DO PRODUTO", "")
+                cur.execute(
+                    """INSERT INTO catalogo_base_produtos (codigo_produto, descricao, dados, sincronizado_em)
+                       VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+                       ON CONFLICT (codigo_produto)
+                       DO UPDATE SET descricao = EXCLUDED.descricao, dados = EXCLUDED.dados,
+                                     sincronizado_em = CURRENT_TIMESTAMP""",
+                    (codigo, descricao[:200], json.dumps(dados, ensure_ascii=False)),
+                )
+            cur.execute(
+                """INSERT INTO catalogo_base_meta (chave, valor, atualizado_em)
+                   VALUES ('colunas', %s, CURRENT_TIMESTAMP)
+                   ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, atualizado_em = CURRENT_TIMESTAMP""",
+                (json.dumps([{"grupo": c["grupo"], "nome": c["nome"]} for c in colunas], ensure_ascii=False),),
+            )
+
+        # 2) Imagem placeholder (reutilizada por biblioteca e capas)
+        cur.execute(
+            "INSERT INTO catalogo_imagem (imagem, mime_type, criado_por) VALUES (%s, %s, %s) RETURNING id::text",
+            (PNG_1X1, "image/png", admin_id),
+        )
+        img_id = cur.fetchone()[0]
+
+        # 3) Biblioteca: 1 item por produto da base
+        bib_ids = []
+        for r in linhas[2:]:
+            codigo = (r[0] or "").strip()
+            if not codigo:
+                continue
+            descricao = (r[1] or "").strip()
+            cur.execute(
+                """INSERT INTO catalogo_biblioteca (codigo_produto, descricao, imagem_id, criado_por)
+                   VALUES (%s, %s, %s, %s)
+                   ON CONFLICT (codigo_produto)
+                   DO UPDATE SET descricao = EXCLUDED.descricao
+                   RETURNING id::text""",
+                (codigo, descricao[:200], img_id, admin_id),
+            )
+            bib_ids.append(cur.fetchone()[0])
+
+        # 4) Modelos (catálogos) — 2 versões, ambas oficiais p/ aparecerem na galeria
+        colunas_ficha = ["DESCRIÇÃO DO PRODUTO", "CATEGORIA", "UNIDADE", "PREÇO", "PESO (KG)"]
+        modelos = [
+            ("Catálogo Geral 2026", "Catálogo EMPRESA 2026", "Linha completa de produtos", 2026),
+            ("Catálogo Destaques 2026", "Destaques EMPRESA 2026", "Seleção de produtos em destaque", 2026),
+        ]
+        criados = 0
+        produtos_vinculados = 0
+        for idx_m, (nome, titulo, subtitulo, ano) in enumerate(modelos):
+            cur.execute(
+                """INSERT INTO catalogo_modelo
+                       (nome, titulo_pagina, subtitulo, ano, oficial, colunas_ficha,
+                        capa_inicial_id, capa_indice_id, capa_final_id, usar_capa_padrao, criado_por)
+                   VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s, %s, FALSE, %s)
+                   RETURNING id::text""",
+                (
+                    nome, titulo, subtitulo, ano,
+                    json.dumps(colunas_ficha, ensure_ascii=False),
+                    img_id, img_id, img_id, admin_id,
+                ),
+            )
+            mid = cur.fetchone()[0]
+            criados += 1
+            # O 1º modelo recebe todos os produtos; o 2º recebe metade (destaques)
+            alvo = bib_ids if idx_m == 0 else bib_ids[: max(1, len(bib_ids) // 2)]
+            for ordem, bib_id in enumerate(alvo, start=1):
+                cur.execute(
+                    """INSERT INTO catalogo_produto (modelo_id, biblioteca_id, ordem)
+                       VALUES (%s, %s, %s)
+                       ON CONFLICT (modelo_id, biblioteca_id) DO NOTHING""",
+                    (mid, bib_id, ordem),
+                )
+                produtos_vinculados += 1
+
+        conn.commit()
+        return {
+            "ok": True,
+            "skipped": False,
+            "base_produtos": len(bib_ids),
+            "colunas": len(colunas),
+            "biblioteca": len(bib_ids),
+            "modelos": criados,
+            "produtos_vinculados": produtos_vinculados,
+        }
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Falha ao popular catálogo dummy: {e}")
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ─────────────────────────────────────────────
 #  Payloads
 # ─────────────────────────────────────────────
 class ModeloCreate(BaseModel):

@@ -835,6 +835,124 @@ def enviar_emails(body: EnviarEmailsBody, user_id: Optional[str] = Depends(get_u
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  SEED — popular o banco com dados dummy (idempotente, conexão própria)
+# ─────────────────────────────────────────────────────────────────────────────
+def seed_dummy_comissao(admin_id: str) -> dict:
+    """Popula `comissao_registro` (12 representantes x 12 meses de 2026) e anexa
+    alguns PDFs dummy em `comissao_documento`. Idempotente: usa o UNIQUE de
+    chave_sync (upsert) e só cria documento para registros ainda sem documento.
+
+    Não altera assinaturas/rotas/permissões; abre e fecha a própria conexão.
+    """
+    ensure_comissao_tables()
+    linhas = _ler_planilha()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    inseridos = atualizados = ignorados = docs = 0
+    try:
+        ids_para_pdf = []  # (id, pdf_ref) dos registros para anexar PDF dummy
+        for row in linhas:
+            cod = (row.get("CÓDIGO_DO_VENDEDOR") or row.get("CODIGO_DO_VENDEDOR") or "").strip()
+            mes = (row.get("MES_COMISSAO") or "").strip()
+            ref = (row.get("REFERENCIA") or "").strip()
+            if not (cod and mes and ref):
+                ignorados += 1
+                continue
+            chave = _chave_sync(mes, ref, cod)
+            extra = {k: row.get(k) for k in ("percentual", "premio", "PREMIAÇÃO", "TOTAL", "realizado", "meta", "chave_vendedor", "CHAVE")}
+            cur.execute(
+                """
+                INSERT INTO comissao_registro
+                    (chave_sync, codigo_vendedor, codigo_norm, nome_fantasia, nome_norm, comissao,
+                     total_a_receber, mes_comissao, referencia, pdf_ref, validacao_sheet, email, dados_extra)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (chave_sync) DO UPDATE SET
+                    codigo_vendedor = EXCLUDED.codigo_vendedor,
+                    codigo_norm     = EXCLUDED.codigo_norm,
+                    nome_fantasia   = EXCLUDED.nome_fantasia,
+                    nome_norm       = EXCLUDED.nome_norm,
+                    comissao        = EXCLUDED.comissao,
+                    total_a_receber = EXCLUDED.total_a_receber,
+                    mes_comissao    = EXCLUDED.mes_comissao,
+                    referencia      = EXCLUDED.referencia,
+                    pdf_ref         = EXCLUDED.pdf_ref,
+                    validacao_sheet = EXCLUDED.validacao_sheet,
+                    email           = EXCLUDED.email,
+                    dados_extra     = EXCLUDED.dados_extra,
+                    atualizado_em   = CURRENT_TIMESTAMP
+                RETURNING id::text, (xmax = 0) AS inserido, documento_id
+                """,
+                (
+                    chave, cod, norm_cod(cod), row.get("NOME_FANTASIA", ""), norm_nome(row.get("NOME_FANTASIA", "")),
+                    row.get("COMISSÃO") or row.get("COMISSAO") or "", row.get("total_a_receber", ""),
+                    mes, ref, row.get("PDF", ""), row.get("VALIDACAO_FINANCEIRO", ""), row.get("EMAIL", ""),
+                    json.dumps(extra, ensure_ascii=False),
+                ),
+            )
+            rid, inserido, doc_id = cur.fetchone()
+            if inserido:
+                inseridos += 1
+            else:
+                atualizados += 1
+            # PDF dummy só para registros do 1º mês (jan/2026) ainda sem documento.
+            if doc_id is None and mes.lower().startswith("janeiro") and row.get("PDF"):
+                ids_para_pdf.append((rid, row.get("PDF")))
+
+        # Reflete a validação da planilha onde ninguém validou no portal (mesma regra do /sync).
+        cur.execute(
+            """
+            UPDATE comissao_registro SET status_validacao = CASE
+                WHEN upper(coalesce(validacao_sheet,'')) LIKE '%REPROV%' THEN 'reprovado'
+                WHEN upper(coalesce(validacao_sheet,'')) LIKE '%VALID%'  THEN 'aprovado'
+                ELSE 'pendente' END
+            WHERE validado_por IS NULL
+            """
+        )
+        conn.commit()
+
+        # E-mails (complementar), igual ao /sync. Best-effort.
+        try:
+            emails = _ler_emails()
+            for c, (prim, sec) in emails.items():
+                cur.execute("UPDATE comissao_registro SET email_primario = %s, email_secundario = %s WHERE codigo_norm = %s", (prim, sec, c))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+
+        # Anexa PDFs dummy (idempotente: só para os que estão sem documento).
+        for rid, pdf_ref in ids_para_pdf:
+            res = _drive_buscar_baixar(pdf_ref)
+            if not res:
+                continue
+            conteudo, mime, nome = res
+            try:
+                doc_id = _salvar_documento(cur, conteudo, mime, nome, admin_id)
+                cur.execute(
+                    "UPDATE comissao_registro SET documento_id = %s, origem_pdf = 'drive', atualizado_em = CURRENT_TIMESTAMP WHERE id = %s AND documento_id IS NULL",
+                    (doc_id, rid),
+                )
+                conn.commit()
+                docs += 1
+            except Exception:
+                conn.rollback()
+
+        # Marca o carimbo de última sincronização (mesmo registro usado por /arvore).
+        try:
+            cur.execute("INSERT INTO comissao_sync (id, sincronizado_em) VALUES (1, CURRENT_TIMESTAMP) ON CONFLICT (id) DO UPDATE SET sincronizado_em = CURRENT_TIMESTAMP")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+    return {"ok": True, "inseridos": inseridos, "atualizados": atualizados,
+            "ignorados": ignorados, "documentos": docs, "total": len(linhas)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  RELATÓRIO — Conversão para dados dummy (sem fontes externas)
 # ─────────────────────────────────────────────────────────────────────────────
 # (a) FONTES EXTERNAS SUBSTITUÍDAS:

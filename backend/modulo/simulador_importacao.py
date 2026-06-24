@@ -187,6 +187,27 @@ def _is_stale(fetched_at: datetime) -> bool:
         return False
 
 
+def seed_dummy_simulador(admin_id: str) -> dict:
+    """Insere 1+ cotações dummy (USD-BRL ~5.10) na tabela simulador_cambio.
+
+    Idempotente: só insere se a tabela estiver vazia (nenhuma cotação salva).
+    Usa _dummy_cotacao() para o valor e _save_rate() para persistir, mantendo
+    o mesmo shape/fonte dos endpoints. admin_id é aceito por consistência de
+    assinatura com os demais seeds (a tabela não tem coluna de usuário).
+    """
+    ensure_simulador_cambio_table()
+    last = _get_last_rate()
+    if last is not None:
+        return {"status": "skipped", "reason": "já existe cotação", "inserted": 0}
+    try:
+        brl, _cny = _dummy_cotacao()
+        saved = _save_rate(brl, source="seed_dummy")
+        return {"status": "ok", "inserted": 1, "rate": saved["rate"], "id": saved["id"]}
+    except Exception as e:
+        print(f"seed_dummy_simulador error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
 @router.get("/cambio")
 def get_cambio(user_id: Optional[str] = Depends(get_user_id_from_session)):
     if not check_module_permission(user_id or "", MODULE_ID):

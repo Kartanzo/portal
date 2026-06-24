@@ -351,26 +351,48 @@ def ensure_importacao_v2_modelos_table():
 
 def seed_dummy_moq(admin_id: str) -> dict:
     """Popula parâmetros do produto (MOQ + medidas) em importacao_v2_moq — a fonte
-    primária da página /importacao-v2/moq ("MOQ por SKU"). IDEMPOTENTE: se já houver
-    qualquer linha, não duplica nada.
+    primária da página /importacao-v2/moq ("MOQ por SKU") e a origem das dimensões
+    usadas em /containers (via _load_container_params_db). IDEMPOTENTE: usa
+    ON CONFLICT (codigo) DO NOTHING e só insere os códigos ainda ausentes.
+
+    Cobre a UNIÃO de:
+      - dummy.PRODUTOS         → 12 códigos 104000xx (descrições "Produto Demo …")
+      - IMPORTED_ITEM_CODES    → 30 códigos 10490001..10490030 (descrições
+                                 genéricas "Produto Importado N")
+
+    Isso corrige o descasamento que fazia o container "não encontrar as dimensões
+    dos produtos": /calculate usa IMPORTED_ITEM_CODES por padrão, mas a tabela só
+    tinha os 104000xx — agora ambos os conjuntos têm MOQ + dimensões.
 
     Conexão/commit/rollback próprios (try/finally). Garante a tabela via
-    ensure_importacao_v2_modelos_table() e insere 1 linha por produto de
-    dummy.PRODUTOS (códigos 104000xx), com MOQ, UNIT/CTN, CBM, peso (G.W/N.W),
-    dimensões (LxWxH), preço e origem — todos determinísticos (dummy.rng).
-    Retorna dict com a contagem inserida (ou skipped=True se já populado)."""
+    ensure_importacao_v2_modelos_table() e insere 1 linha por código, com MOQ,
+    UNIT/CTN, CBM, peso (G.W/N.W), dimensões (LxWxH), preço e origem — todos
+    determinísticos (dummy.rng). Retorna dict com a contagem inserida."""
     ensure_importacao_v2_modelos_table()
+
+    # União determinística: (codigo, descricao, unidade) — dummy.PRODUTOS primeiro,
+    # depois os importados (sem duplicar caso algum código se sobreponha).
+    seen: set = set()
+    catalogo: List[tuple] = []
+    for codigo, descricao, unidade, _categoria in dummy.PRODUTOS:
+        cod = str(codigo).strip()
+        if cod in seen:
+            continue
+        seen.add(cod)
+        catalogo.append((cod, descricao, unidade))
+    for i, codigo in enumerate(IMPORTED_ITEM_CODES, start=1):
+        cod = str(codigo).strip()
+        if cod in seen:
+            continue
+        seen.add(cod)
+        catalogo.append((cod, f"Produto Importado {i}", "UN"))
+
     conn = get_db_connection()
     cur = conn.cursor()
     try:
-        # idempotência: já há parâmetros cadastrados? não duplica nada.
-        cur.execute("SELECT COUNT(*) FROM importacao_v2_moq")
-        if (cur.fetchone()[0] or 0) > 0:
-            return {"ok": True, "skipped": True, "motivo": "ja_existem_parametros"}
-
         origens = ["China", "Brasil"]
         n = 0
-        for codigo, descricao, unidade, _categoria in dummy.PRODUTOS:
+        for codigo, descricao, unidade in catalogo:
             r = dummy.rng("importacao_v2_moq", codigo)
             moq        = float(r.choice([500, 1000, 1500, 2000, 2500, 3000]))
             unit_ctn   = float(r.choice([12, 24, 36, 48, 60, 100]))
@@ -394,16 +416,142 @@ def seed_dummy_moq(admin_id: str) -> dict:
                  unit_ctn, cbm, gw, nw, comprimento, largura, altura,
                  price, unidade),
             )
-            n += 1
+            n += cur.rowcount  # conta só os realmente inseridos (ON CONFLICT = 0)
 
         conn.commit()
-        return {"ok": True, "skipped": False, "parametros": n}
+        return {"ok": True, "skipped": n == 0, "parametros": n,
+                "total_catalogo": len(catalogo)}
     except Exception as e:
         conn.rollback()
         print(f"[importation_v2] seed_dummy_moq error: {e}")
         return {"ok": False, "erro": str(e)}
     finally:
         cur.close(); conn.close()
+
+
+def seed_dummy_importacao_v2(admin_id: str) -> dict:
+    """Popula o RESTO do fluxo de Importação V2 para a página ter dados ao abrir:
+    modelos de cálculo, modelos de container e uma order list de exemplo.
+    IDEMPOTENTE (ON CONFLICT / checagem de existência) e com conexão própria.
+
+    Popula:
+      - importacao_v2_modelos          (modelos de cálculo; codigos = IMPORTED_ITEM_CODES)
+      - importacao_v2_container_modelos (20GP / 40GP / 40HC, com capacidade CBM)
+      - importacao_v2_order_lists       (1 lista de exemplo p/ histórico)
+
+    Também garante que as dimensões existam chamando seed_dummy_moq(admin_id),
+    para o container achar CBM dos produtos importados.
+    Retorna dict com a contagem por tabela."""
+    ensure_importacao_v2_modelos_table()
+    # Garante dimensões/MOQ para a UNIÃO (idempotente).
+    moq_res = seed_dummy_moq(admin_id)
+
+    uid = int(admin_id) if admin_id and str(admin_id).isdigit() else None
+    nome_usuario = _fetch_user_nome(uid) if uid else None
+    out: Dict[str, Any] = {"ok": True, "moq": moq_res}
+
+    # ---- 1) Modelos de cálculo (importacao_v2_modelos) ----
+    # UNIQUE(user_id, nome) → ON CONFLICT DO NOTHING garante idempotência.
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        modelos = [
+            ("Importados — janela 15m (corrido)", IMPORTED_ITEM_CODES,
+             DEFAULT_QTD_MESES, "corrido"),
+            ("Importados — só meses com venda", IMPORTED_ITEM_CODES,
+             12, "vendas"),
+        ]
+        n_mod = 0
+        for nome, codigos, qtd_meses, modo in modelos:
+            cur.execute(
+                """INSERT INTO importacao_v2_modelos
+                       (user_id, nome, codigos, qtd_meses, modo, overrides, threshold_sigma)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)
+                   ON CONFLICT (user_id, nome) DO NOTHING""",
+                (uid, nome, json.dumps(list(codigos)), qtd_meses, modo,
+                 json.dumps({}), DEFAULT_THRESHOLD_SIGMA),
+            )
+            n_mod += cur.rowcount
+        conn.commit()
+        out["modelos"] = n_mod
+    except Exception as e:
+        conn.rollback()
+        out["modelos_erro"] = str(e)
+        print(f"[importation_v2] seed_dummy_importacao_v2 modelos: {e}")
+    finally:
+        cur.close(); conn.close()
+
+    # ---- 2) Modelos de container (importacao_v2_container_modelos) ----
+    # Sem UNIQUE — usa checagem por nome p/ não duplicar.
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        container_modelos = [
+            ("Container 20GP (padrão)",  "20'",  28.0),
+            ("Container 40GP (padrão)",  "40'",  58.0),
+            ("Container 40HC (padrão)",  "40HC", 68.0),
+        ]
+        n_cm = 0
+        for nome, tipo, cap in container_modelos:
+            cur.execute(
+                "SELECT 1 FROM importacao_v2_container_modelos WHERE nome = %s LIMIT 1",
+                (nome,),
+            )
+            if cur.fetchone():
+                continue
+            cur.execute(
+                """INSERT INTO importacao_v2_container_modelos
+                       (user_id, user_nome, nome, tipo_container, capacidade_cbm, containers)
+                   VALUES (%s, %s, %s, %s, %s, %s)""",
+                (uid, nome_usuario, nome, tipo, cap, json.dumps([])),
+            )
+            n_cm += 1
+        conn.commit()
+        out["container_modelos"] = n_cm
+    except Exception as e:
+        conn.rollback()
+        out["container_modelos_erro"] = str(e)
+        print(f"[importation_v2] seed_dummy_importacao_v2 container_modelos: {e}")
+    finally:
+        cur.close(); conn.close()
+
+    # ---- 3) Order list de exemplo (importacao_v2_order_lists) ----
+    conn = get_db_connection(); cur = conn.cursor()
+    try:
+        nome_ol = "Order List exemplo (importados)"
+        cur.execute(
+            "SELECT 1 FROM importacao_v2_order_lists WHERE nome = %s LIMIT 1",
+            (nome_ol,),
+        )
+        n_ol = 0
+        if not cur.fetchone():
+            data_chegada = f"{dummy.ANO_BASE}-06-15"
+            items = []
+            datas_chegada: Dict[str, str] = {}
+            for codigo in IMPORTED_ITEM_CODES[:10]:
+                cod = str(codigo).strip()
+                rr = dummy.rng("importacao_v2_orderlist", cod)
+                items.append({"codigo": cod,
+                              "qty": float(rr.choice([500, 1000, 1500, 2000])),
+                              "data": data_chegada})
+                datas_chegada[cod] = data_chegada
+            cur.execute(
+                """INSERT INTO importacao_v2_order_lists
+                       (user_id, user_nome, nome, labels, observacao, items, datas_chegada)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (uid, nome_usuario, nome_ol, json.dumps(["Teste/Simulação"]),
+                 "Gerado por seed_dummy_importacao_v2",
+                 json.dumps(items), json.dumps(datas_chegada)),
+            )
+            n_ol = 1
+        conn.commit()
+        out["order_lists"] = n_ol
+    except Exception as e:
+        conn.rollback()
+        out["order_lists_erro"] = str(e)
+        print(f"[importation_v2] seed_dummy_importacao_v2 order_lists: {e}")
+    finally:
+        cur.close(); conn.close()
+
+    return out
 
 
 LABELS_PADRAO = [
