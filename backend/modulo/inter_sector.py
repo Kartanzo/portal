@@ -818,6 +818,143 @@ def remove_inter_sector_participant(ticket_id: UUID, participant_user_id: UUID, 
         conn.close()
 
 
+# ─────────────────────────────────────────────
+#  SEED de dados dummy de 2026 (chamados entre setores)
+# ─────────────────────────────────────────────
+
+def seed_dummy_inter_sector(admin_id: str) -> dict:
+    """
+    Popula chamados entre setores de demonstração para o ano de 2026.
+
+    - Conexão/commit/rollback próprios (try/finally).
+    - Idempotente: se já houver chamados, não duplica nada.
+    - Garante as tabelas (CREATE TABLE IF NOT EXISTS) antes de inserir.
+    - Cria chamados distribuídos em TODOS os 12 meses de 2026, entre setores
+      de dummy.SETORES, com requester_id/created_by = admin_id.
+    """
+    from core import dummy
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Garante as tabelas usadas pelo módulo (mesmos nomes/colunas das queries)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS inter_sector_tickets (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                title TEXT NOT NULL,
+                description TEXT,
+                category TEXT,
+                subcategory TEXT,
+                priority TEXT,
+                status TEXT NOT NULL DEFAULT 'Aberto',
+                requester_id UUID REFERENCES users(id),
+                requester_sector TEXT,
+                target_sector TEXT,
+                delivery_forecast DATE,
+                involved_sectors TEXT[] DEFAULT '{}',
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS inter_sector_ticket_updates (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                ticket_id UUID NOT NULL REFERENCES inter_sector_tickets(id) ON DELETE CASCADE,
+                user_id UUID REFERENCES users(id),
+                message TEXT,
+                attachment_name TEXT,
+                attachment_path TEXT,
+                is_system BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS inter_sector_ticket_participants (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                ticket_id UUID NOT NULL REFERENCES inter_sector_tickets(id) ON DELETE CASCADE,
+                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                added_by UUID REFERENCES users(id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(ticket_id, user_id)
+            )
+        """)
+        conn.commit()
+
+        # Idempotência: se já existem chamados, não duplica
+        cur.execute("SELECT COUNT(*) FROM inter_sector_tickets")
+        if (cur.fetchone() or [0])[0] > 0:
+            return {"inserted": 0, "message": "Chamados entre setores já existem — seed ignorado."}
+
+        r = dummy.rng("inter-sector-seed")
+        STATUS = ['Aberto', 'Em Atendimento', 'Aguardando Usuário', 'Aguardando Suporte',
+                  'Em Validação', 'Concluído', 'Cancelado']
+        PRIORIDADES = ['Baixa', 'Média', 'Alta', 'Urgente']
+        CATEGORIAS = ['Solicitação', 'Dúvida', 'Problema', 'Melhoria', 'Documentação']
+
+        # ~5 chamados por mês -> garante lançamentos em TODOS os meses de 2026
+        datas = dummy.datas_no_ano(60, ano=dummy.ANO_BASE, chave="inter-sector")
+        n = 0
+        for i, d in enumerate(datas):
+            # Setores de origem e destino distintos
+            origem = dummy.escolher(r, dummy.SETORES)
+            destino = dummy.escolher(r, dummy.SETORES)
+            while destino == origem:
+                destino = dummy.escolher(r, dummy.SETORES)
+
+            status = dummy.escolher(r, STATUS)
+            prio = dummy.escolher(r, PRIORIDADES)
+            cat = dummy.escolher(r, CATEGORIAS)
+            ts = d.strftime("%Y-%m-%d") + " 09:00:00"
+            # Previsão de entrega alguns dias após a abertura
+            forecast = (d + timedelta(days=dummy.inteiro(r, 2, 15))).strftime("%Y-%m-%d")
+
+            cur.execute(
+                """
+                INSERT INTO inter_sector_tickets
+                    (title, description, category, subcategory, priority, status,
+                     requester_id, requester_sector, target_sector, delivery_forecast,
+                     involved_sectors, is_active, created_at, updated_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE, %s, %s)
+                RETURNING id
+                """,
+                (
+                    f"Chamado entre setores dummy #{i+1:03d} — {cat}",
+                    f"Registro de demonstração gerado automaticamente "
+                    f"({origem} → {destino}, {cat}, {d.strftime('%m/%Y')}).",
+                    cat, '', prio, status,
+                    admin_id, origem, destino, forecast,
+                    [], ts, ts,
+                ),
+            )
+            new_id = cur.fetchone()[0]
+
+            # Comentário de sistema na abertura (created_by = admin_id)
+            cur.execute(
+                """
+                INSERT INTO inter_sector_ticket_updates
+                    (ticket_id, user_id, message, is_system, created_at)
+                VALUES (%s, %s, %s, TRUE, %s)
+                """,
+                (
+                    str(new_id), admin_id,
+                    f"Chamado dummy aberto por {origem} para {destino}.",
+                    ts,
+                ),
+            )
+            n += 1
+
+        conn.commit()
+        return {"inserted": n, "message": f"{n} chamados entre setores dummy de 2026 criados."}
+    except Exception as e:
+        conn.rollback()
+        print(f"seed_dummy_inter_sector error: {e}")
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
+
 if __name__ == "__main__":
     import uvicorn
     # Use port 8002 to avoid conflicts

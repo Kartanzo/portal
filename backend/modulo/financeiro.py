@@ -1204,3 +1204,257 @@ def get_plano_contas(user_id: Optional[str] = Depends(get_user_id_from_session))
 # ==========================================
 
 # Auto-create sectors table and seed with default data on first run
+
+
+# ==========================================
+# === SEED DUMMY FINANCEIRO (2026) ===
+# ==========================================
+
+def _ensure_finance_tables(cur):
+    """Garante a existência das tabelas do financeiro (idempotente).
+
+    Usa os MESMOS nomes de tabela/coluna referenciados no restante do módulo:
+      - financeiro_bases (id, type, filename, version_name, uploaded_by,
+        competencia, is_active, uploaded_at)
+      - financeiro_data_orcado / financeiro_data_realizado (base_id, competencia,
+        ebtida, margem_contribuicao, tipo, setor, departamento, conta_contabil,
+        grupo, descricao_conta, valor, row_index)
+      - financeiro_justificativas (base_id, competencia, conta_contabil,
+        departamento, grupo, justificativa, created_by, created_at)
+    """
+    cur.execute("CREATE EXTENSION IF NOT EXISTS \"pgcrypto\"")
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS financeiro_bases (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            type VARCHAR(20) NOT NULL,
+            filename TEXT,
+            version_name TEXT,
+            uploaded_by UUID,
+            competencia TEXT,
+            is_active BOOLEAN DEFAULT TRUE,
+            uploaded_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+
+    for _tbl in ("financeiro_data_orcado", "financeiro_data_realizado"):
+        cur.execute(f"""
+            CREATE TABLE IF NOT EXISTS {_tbl} (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                base_id UUID,
+                competencia TEXT,
+                ebtida TEXT,
+                margem_contribuicao TEXT,
+                tipo TEXT,
+                setor TEXT,
+                departamento TEXT,
+                conta_contabil TEXT,
+                grupo TEXT,
+                descricao_conta TEXT,
+                valor DOUBLE PRECISION,
+                row_index INTEGER
+            )
+        """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS financeiro_justificativas (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            base_id UUID,
+            competencia TEXT,
+            conta_contabil TEXT,
+            departamento TEXT,
+            grupo TEXT,
+            justificativa TEXT,
+            created_by UUID,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
+    # Índice único usado pelo UPSERT de save_justificativa (ON CONFLICT ... COALESCE)
+    cur.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_financeiro_just
+        ON financeiro_justificativas
+        (base_id, competencia, conta_contabil, COALESCE(departamento, 'N/A'))
+    """)
+
+
+# Plano de contas dummy alinhado ao DRE_STRUCTURE (core/config.py).
+# (conta_contabil, grupo, descricao_conta, base_mensal_R$, sinal)
+# sinal: +1 receita; -1 despesa/dedução (valores negativos como no upload real).
+_SEED_PLANO_CONTAS = [
+    ("4.1.1.001", "Receita Bruta", "Venda de produtos", 1200000.0, 1),
+    ("4.2.2.003", "Deduções", "ICMS sobre vendas", 95000.0, -1),
+    ("4.2.2.004", "Deduções", "PIS sobre vendas", 19800.0, -1),
+    ("4.2.2.005", "Deduções", "COFINS sobre vendas", 91200.0, -1),
+    ("4.2.2.006", "Deduções", "ISS sobre vendas", 6000.0, -1),
+    ("4.2.2.007", "Deduções", "ICMS-ST sobre vendas", 14000.0, -1),
+    ("5.1.1.001", "Matéria-Prima Consumida", "Matéria-prima consumida", 360000.0, -1),
+    ("5.1.2.001", "Pessoal Industrial", "Salários produção", 88000.0, -1),
+    ("5.1.2.003", "Pessoal Industrial", "Encargos sociais produção", 26000.0, -1),
+    ("5.1.2.007", "Pessoal Industrial", "Férias produção", 9000.0, -1),
+    ("5.1.2.008", "Pessoal Industrial", "13º salário produção", 8000.0, -1),
+    ("5.1.3.001", "Ocupação Industrial", "Aluguel fábrica", 22000.0, -1),
+    ("5.1.3.002", "Ocupação Industrial", "Energia elétrica fábrica", 18000.0, -1),
+    ("5.1.3.003", "Custos Indiretos", "Custos indiretos de fabricação", 15000.0, -1),
+    ("6.1.1.001", "Despesas Comerciais", "Comissões sobre vendas", 36000.0, -1),
+    ("6.1.1.002", "Despesas Comerciais", "Fretes sobre vendas", 21000.0, -1),
+    ("6.1.1.004", "Despesas Comerciais", "Despesa com cesta básica", 5400.0, -1),
+    ("6.1.2.001", "Marketing", "Publicidade e propaganda", 28000.0, -1),
+    ("6.1.2.002", "Marketing", "Material promocional", 9000.0, -1),
+    ("6.1.3.001", "Negócios Digitais", "Mídia paga online", 17000.0, -1),
+    ("6.1.3.004", "Negócios Digitais", "Marketplaces e comissões", 12000.0, -1),
+    ("6.2.1.001", "Pessoal Administrativo", "Salários administrativos", 72000.0, -1),
+    ("6.2.1.005", "Pessoal Administrativo", "Encargos administrativos", 21000.0, -1),
+    ("6.2.1.006", "Pessoal Administrativo", "Vale-transporte", 4800.0, -1),
+    ("6.2.2.002", "Serviços de Terceiros", "Honorários contábeis", 9000.0, -1),
+    ("6.2.2.003", "Serviços de Terceiros", "Assessoria jurídica", 7000.0, -1),
+    ("6.2.2.004", "Serviços de Terceiros", "Consultoria de TI", 6500.0, -1),
+    ("6.2.4.001", "Despesas Gerais", "Despesa com Licenças e Alvarás", 3200.0, -1),
+    ("6.2.4.002", "Despesas Gerais", "Material de escritório", 2100.0, -1),
+    ("6.2.4.006", "Despesas Gerais", "Telefonia e internet", 3800.0, -1),
+]
+
+# Departamentos dummy (subconjunto de dummy.SETORES, mapeados ao DRE).
+_SEED_DEPARTAMENTOS = ["Comercial", "Financeiro", "Fabrica", "Marketing", "T.I"]
+
+
+def seed_dummy_financeiro(admin_id: str) -> dict:
+    """Popula dados dummy de 2026 para o módulo financeiro (DRE / Orçado x Realizado).
+
+    - Idempotente: se já houver base ativa, NÃO duplica (retorna {'skipped': True}).
+    - Garante as tabelas via _ensure_finance_tables (CREATE TABLE IF NOT EXISTS).
+    - Cria 1 base 'orcado' e 1 base 'realizado' (uploaded_by = admin_id).
+    - Popula TODOS os 12 meses de 2026 (Janeiro..Dezembro) por conta contábil
+      e departamento, usando core.dummy (rng, serie_mensal, MESES_PT_LONGO, SETORES).
+    - Inclui algumas justificativas de exemplo.
+    """
+    from core import dummy
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+
+        # Garante as tabelas (idempotente).
+        _ensure_finance_tables(cur)
+
+        # Idempotência: se já existir QUALQUER base ativa, não popula de novo.
+        cur.execute("SELECT COUNT(*) FROM financeiro_bases WHERE is_active = TRUE")
+        existing = cur.fetchone()[0]
+        if existing and int(existing) > 0:
+            conn.rollback()
+            cur.close()
+            return {"skipped": True, "reason": "Já existem bases ativas", "bases": int(existing)}
+
+        meses = dummy.MESES_PT_LONGO  # ['Janeiro', ..., 'Dezembro']
+        # Sanity: garante alinhamento com os departamentos dummy disponíveis.
+        departamentos = [d for d in _SEED_DEPARTAMENTOS if d in dummy.SETORES] or _SEED_DEPARTAMENTOS
+
+        resultado = {}
+
+        # base_factor por tipo: realizado oscila em torno do orçado.
+        for tipo_base in ("orcado", "realizado"):
+            cur.execute(
+                """
+                INSERT INTO financeiro_bases (type, filename, version_name, uploaded_by, competencia, is_active)
+                VALUES (%s, %s, %s, %s, %s, TRUE)
+                RETURNING id
+                """,
+                (
+                    tipo_base,
+                    f"dummy_{tipo_base}_2026.xlsx",
+                    f"Dummy {tipo_base.capitalize()} 2026",
+                    admin_id,
+                    None,
+                ),
+            )
+            base_id = cur.fetchone()[0]
+
+            data_table = "financeiro_data_orcado" if tipo_base == "orcado" else "financeiro_data_realizado"
+
+            linhas = []
+            row_index = 0
+            for conta, grupo, descricao, base_mensal, sinal in _SEED_PLANO_CONTAS:
+                # Distribui o valor mensal entre os departamentos.
+                for dep in departamentos:
+                    # Série determinística por (tipo, conta, departamento).
+                    serie = dummy.serie_mensal(
+                        f"financeiro|{tipo_base}|{conta}|{dep}",
+                        base=base_mensal / len(departamentos),
+                        var=0.18,
+                        tendencia=0.015,
+                    )
+                    r = dummy.rng("financeiro_real_adj", conta, dep)
+                    for i, mes in enumerate(meses):
+                        v = serie[i]["valor"]
+                        # Realizado desvia levemente do orçado (ruído determinístico).
+                        if tipo_base == "realizado":
+                            v = round(v * (1 + r.uniform(-0.12, 0.12)), 2)
+                        valor_final = round(v * sinal, 2)
+                        linhas.append((
+                            str(base_id),
+                            mes,
+                            None,            # ebtida
+                            None,            # margem_contribuicao
+                            "Receita" if sinal > 0 else "Despesa",  # tipo
+                            "Industria",    # setor
+                            dep,             # departamento
+                            conta,           # conta_contabil
+                            grupo,           # grupo
+                            descricao,       # descricao_conta
+                            valor_final,     # valor
+                            row_index,       # row_index
+                        ))
+                        row_index += 1
+
+            args_str = ",".join(
+                cur.mogrify("(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)", x).decode("utf-8")
+                for x in linhas
+            )
+            cur.execute(f"""
+                INSERT INTO {data_table}
+                (base_id, competencia, ebtida, margem_contribuicao, tipo, setor, departamento, conta_contabil, grupo, descricao_conta, valor, row_index)
+                VALUES {args_str}
+            """)
+
+            resultado[tipo_base] = {"base_id": str(base_id), "rows": len(linhas)}
+
+            # Algumas justificativas de exemplo (apenas para a base orçado).
+            if tipo_base == "orcado":
+                just_samples = [
+                    ("Janeiro", "6.1.2.001", "Marketing", "Marketing",
+                     "Investimento extra em campanha de lançamento."),
+                    ("Março", "6.1.1.002", "Comercial", "Despesas Comerciais",
+                     "Aumento de fretes por reajuste de transportadoras."),
+                    ("Junho", "5.1.1.001", "Fabrica", "Matéria-Prima Consumida",
+                     "Compra antecipada de matéria-prima para o 2º semestre."),
+                    ("Setembro", "6.2.2.004", "T.I", "Serviços de Terceiros",
+                     "Projeto pontual de consultoria de TI."),
+                ]
+                for comp, conta, dep, grupo, txt in just_samples:
+                    cur.execute(
+                        """
+                        INSERT INTO financeiro_justificativas
+                        (base_id, competencia, conta_contabil, departamento, grupo, justificativa, created_by)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (base_id, competencia, conta_contabil, COALESCE(departamento, 'N/A'))
+                        DO NOTHING
+                        """,
+                        (str(base_id), comp, conta, dep, grupo, txt, admin_id),
+                    )
+                resultado["justificativas"] = len(just_samples)
+
+        conn.commit()
+        cur.close()
+        return {
+            "skipped": False,
+            "ano": dummy.ANO_BASE,
+            "meses": len(meses),
+            "departamentos": departamentos,
+            "contas": len(_SEED_PLANO_CONTAS),
+            **resultado,
+        }
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Erro no seed_dummy_financeiro: {e}")
+        raise
+    finally:
+        conn.close()

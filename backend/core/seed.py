@@ -229,11 +229,23 @@ def _seed_action_plans(cur, admin_id: str) -> int:
     return n
 
 
+# Seeds por domínio definidos em cada módulo (assinatura: fn(admin_id) -> dict; idempotentes).
+_DOMAIN_SEEDS = [
+    ("financeiro", "modulo.financeiro", "seed_dummy_financeiro"),
+    ("rh", "modulo.rh_dev_seed", "seed_dummy_rh"),
+    ("eventos", "modulo.eventos", "seed_dummy_eventos"),
+    ("inter_sector", "modulo.inter_sector", "seed_dummy_inter_sector"),
+    ("sac", "modulo.sac", "seed_dummy_sac"),
+]
+
+
 def run_dummy_seed() -> None:
     """Popula dados de demonstração de 2026. Só roda com SEED_DUMMY ligado. Idempotente."""
     if not seed_enabled():
         logger.info("SEED_DUMMY desligado — pulando seed de dados dummy.")
         return
+
+    # 1) Núcleo: admin + setores + categorias + chamados + planos de ação.
     conn = get_db_connection()
     cur = conn.cursor()
     try:
@@ -244,11 +256,27 @@ def run_dummy_seed() -> None:
         n_plans = _seed_action_plans(cur, admin_id)
         conn.commit()
         logger.info(
-            f"Seed dummy 2026 OK: admin={ADMIN_EMAIL}, tickets+={n_tickets}, action_plans+={n_plans}"
+            f"Seed nucleo 2026 OK: admin={ADMIN_EMAIL}, tickets+={n_tickets}, action_plans+={n_plans}"
         )
     except Exception as e:
         conn.rollback()
-        logger.error(f"run_dummy_seed falhou: {e}")
+        logger.error(f"run_dummy_seed (nucleo) falhou: {e}")
+        cur.close()
+        conn.close()
+        return
     finally:
         cur.close()
         conn.close()
+
+    # 2) Seeds por domínio (cada um com conexão própria e idempotente; isolados — se um
+    #    falhar, os demais seguem).
+    import importlib
+    resultados = {}
+    for nome, mod_name, fn_name in _DOMAIN_SEEDS:
+        try:
+            fn = getattr(importlib.import_module(mod_name), fn_name)
+            resultados[nome] = fn(admin_id)
+        except Exception as e:
+            resultados[nome] = {"error": str(e)}
+            logger.error(f"seed dominio '{nome}' falhou: {e}")
+    logger.info(f"Seeds por dominio 2026: {resultados}")

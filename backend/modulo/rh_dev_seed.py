@@ -22,6 +22,17 @@ from modulo.rh_equipamentos import ensure_tables as ensure_equip
 router = APIRouter(prefix="/rh/_dev", tags=["rh-dev"])
 logger = logging.getLogger(__name__)
 
+# Ano base dos dados dummy: garante lançamentos espalhados pelos 12 meses de 2026.
+ANO_BASE = 2026
+
+
+def _data_ano_base(mes, dia=15):
+    """Retorna um date dentro de ANO_BASE para o mês informado (1..12).
+    Mantém o dia dentro de um intervalo seguro para qualquer mês."""
+    mes = ((mes - 1) % 12) + 1
+    dia = min(max(dia, 1), 28)
+    return date(ANO_BASE, mes, dia)
+
 
 NOMES = [
     "Ana Silva Rodrigues", "Pedro Costa Almeida", "Maria Lima Santos", "Lucas Souza Oliveira",
@@ -101,16 +112,25 @@ def clear_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
     return {"ok": True, "apagados": apagados}
 
 
-@router.post("/seed-dummy")
-def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
-    """Gera 30 registros de cada tipo com dados consistentes entre módulos."""
-    uid = _require_admin(user_id)
+def seed_dummy_rh(admin_id: str) -> dict:
+    """Gera 30 registros de cada tipo com dados consistentes entre módulos.
+    Reutilizável fora do contexto HTTP (ex.: startup do app). Usa `admin_id`
+    como created_by/updated_by/solicitante. IDEMPOTENTE: se já houver
+    colaboradores, retorna sem duplicar. Datas baseadas em ANO_BASE (2026)."""
+    uid = admin_id
     ensure_colab(); ensure_recrut(); ensure_docs(); ensure_jor(); ensure_mov(); ensure_cfg(); ensure_equip()
 
     conn = get_db_connection()
     cur = conn.cursor()
     hoje = date.today()
     counts = {}
+
+    # IDEMPOTÊNCIA: se já existem colaboradores, não duplica.
+    cur.execute("SELECT COUNT(*) FROM rh_colaboradores")
+    if cur.fetchone()[0] > 0:
+        cur.close()
+        conn.close()
+        return {"ok": True, "skipped": True, "motivo": "rh_colaboradores já populado"}
 
     # ===== 30 COLABORADORES =====
     colab_ids = []
@@ -119,15 +139,15 @@ def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
         nome = NOMES[i % len(NOMES)]
         if i >= len(NOMES):
             nome = f"{nome} ({i})"
-        anos_atras = random.randint(0, 8)
-        meses_atras = random.randint(0, 11)
-        admissao = hoje - timedelta(days=anos_atras * 365 + meses_atras * 30)
+        # Admissões espalhadas pelos 12 meses de 2026 (i%12 -> mês 1..12).
+        admissao = _data_ano_base((i % 12) + 1, random.randint(1, 28))
         status = random.choice(STATUS_COL)
         demissao = None
         if status == 'demitido':
-            demissao = admissao + timedelta(days=random.randint(180, 2000))
-            if demissao > hoje:
-                demissao = hoje - timedelta(days=random.randint(1, 90))
+            # Demissão num mês posterior do mesmo ano-base, mantendo consistência.
+            demissao = _data_ano_base(admissao.month + random.randint(1, 4), random.randint(1, 28))
+            if demissao < admissao:
+                demissao = _data_ano_base(12, 28)
         cur.execute(
             """INSERT INTO rh_colaboradores
                 (nome, cpf, email, telefone, matricula, cargo, setor, salario, jornada, tipo,
@@ -161,7 +181,7 @@ def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
     vaga_ids = []
     STATUS_VAGA = ["aberta", "aberta", "aberta", "em_entrevistas", "fechada", "cancelada"]
     for i in range(30):
-        abertura = hoje - timedelta(days=random.randint(0, 90))
+        abertura = _data_ano_base((i % 12) + 1, random.randint(1, 20))
         prazo = abertura + timedelta(days=random.randint(15, 60))
         st = random.choice(STATUS_VAGA)
         fechamento = (abertura + timedelta(days=random.randint(15, 70))) if st in ('fechada', 'cancelada') else None
@@ -212,7 +232,7 @@ def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
     modelo_ids = [r[0] for r in cur.fetchall()]
     STATUS_DOC = ["vigente", "vigente", "vigente", "vencido", "pendente", "arquivado"]
     for i in range(30):
-        emissao = hoje - timedelta(days=random.randint(0, 365))
+        emissao = _data_ano_base((i % 12) + 1, random.randint(1, 28))
         validade = emissao + timedelta(days=random.randint(90, 730))
         cur.execute(
             """INSERT INTO rh_documentos
@@ -234,7 +254,7 @@ def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
     TIPOS_BH = ["extra", "extra", "bh+", "bh-"]
     STATUS_BH = ["pendente", "pendente", "aprovado", "aprovado", "aprovado", "rejeitado"]
     for i in range(30):
-        data_bh = hoje - timedelta(days=random.randint(0, 90))
+        data_bh = _data_ano_base((i % 12) + 1, random.randint(1, 28))
         cur.execute(
             """INSERT INTO rh_banco_horas
                 (colaborador_id, data, horas, tipo, motivo, status, solicitante_id, created_by, updated_by)
@@ -254,7 +274,7 @@ def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
     # ===== 30 FÉRIAS =====
     STATUS_FER = ["pendente", "pendente", "aprovado", "aprovado", "aprovado", "rejeitado"]
     for i in range(30):
-        inicio = hoje + timedelta(days=random.randint(-180, 180))
+        inicio = _data_ano_base((i % 12) + 1, random.randint(1, 15))
         dias = random.choice([10, 15, 20, 30])
         fim = inicio + timedelta(days=dias - 1)
         abono = random.random() < 0.3
@@ -289,7 +309,7 @@ def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
         tipo = "admissao" if i < 15 else "desligamento"
         urg = random.choice(URG)
         st_mov = random.choice(STATUS_MOV)
-        data_prev = hoje + timedelta(days=random.randint(-60, 60))
+        data_prev = _data_ano_base((i % 12) + 1, random.randint(1, 28))
 
         if tipo == "admissao":
             cargo = random.choice(CARGOS)
@@ -334,7 +354,8 @@ def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
 
         aprovado_em = None
         if st_mov == 'aprovado':
-            aprovado_em = hoje - timedelta(days=random.randint(0, 30))
+            # Aprovação no mesmo mês-base da movimentação, dentro de 2026.
+            aprovado_em = _data_ano_base(data_prev.month, random.randint(1, 28))
 
         cur.execute(
             """INSERT INTO rh_movimentacoes
@@ -430,3 +451,10 @@ def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
     cur.close()
     conn.close()
     return {"ok": True, "criados": counts}
+
+
+@router.post("/seed-dummy")
+def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
+    """Gera 30 registros de cada tipo com dados consistentes entre módulos."""
+    uid = _require_admin(user_id)
+    return seed_dummy_rh(uid)

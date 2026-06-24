@@ -1368,6 +1368,108 @@ async def upload_anexo(
 
 
 # ─────────────────────────────────────────────
+#  SEED — Dados dummy de 2026 (idempotente)
+# ─────────────────────────────────────────────
+
+def seed_dummy_sac(admin_id: str) -> dict:
+    """
+    Popula sac_tickets (e alguns comentários/produtos vinculados) com atendimentos
+    dummy distribuídos pelos 12 meses de 2026, para alimentar a lista de tickets e os
+    dashboards (/sac/dashboard/*). IDEMPOTENTE: se já houver tickets, não duplica.
+
+    admin_id: id (UUID) do usuário usado em aberto_por / autor_id dos registros gerados.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # Idempotência: se já existem tickets, não semeia de novo.
+        cur.execute("SELECT COUNT(*) FROM sac_tickets")
+        if (cur.fetchone()[0] or 0) > 0:
+            return {"ok": True, "skipped": True, "motivo": "sac_tickets já possui registros"}
+
+        canais = CANAIS
+        canais_compra = ["Site", "Representante", "Telefone", "WhatsApp", "E-mail", "Marketplace"]
+        publicos = ["cliente", "cliente", "cliente", "consumidor_final"]
+        criados = 0
+        protocolo_seq = 0
+
+        # ~6 atendimentos por mês × 12 meses = 72 tickets, cobrindo jan–dez/2026.
+        for mes in range(1, 13):
+            r = dummy.rng("sac_seed", dummy.ANO_BASE, mes)
+            for _ in range(6):
+                abertura = dummy.dia_aleatorio(dummy.ANO_BASE, mes, r)
+                criado_em = datetime(abertura.year, abertura.month, abertura.day,
+                                     r.randint(8, 18), r.randint(0, 59), r.randint(0, 59))
+                # Resolução algumas horas/dias após a abertura.
+                atualizado_em = criado_em + timedelta(hours=r.randint(1, 120))
+
+                razao_social = dummy.escolher(r, dummy.CLIENTES)
+                cnpj = f"{r.randint(10,99)}.{r.randint(100,999)}.{r.randint(100,999)}/0001-{r.randint(10,99)}"
+                email_contato = "contato@" + re.sub(r"[^a-z0-9]", "", razao_social.lower())[:18] + ".com.br"
+                canal = dummy.escolher(r, canais)
+                canal_compra = dummy.escolher(r, canais_compra)
+                tipo_problema = dummy.escolher(r, TIPOS_PROBLEMA)
+                prioridade = dummy.escolher(r, PRIORIDADES)
+                status = dummy.escolher(r, STATUS_VALIDOS)
+                setor_destino = dummy.escolher(r, SETORES)
+                publico = dummy.escolher(r, publicos)
+
+                protocolo_seq += 1
+                protocolo = f"SAC-{dummy.ANO_BASE}-{protocolo_seq:04d}"
+
+                prod = dummy.escolher(r, dummy.PRODUTOS)
+                cod_prod, desc_prod = prod[0], prod[1]
+
+                cur.execute("""
+                    INSERT INTO sac_tickets
+                        (protocolo, canal, cnpj_cpf, razao_social, email_contato,
+                         tipo_problema, numero_nf, codigo_produto, descricao_produto,
+                         detalhamento, prioridade, status, setor_destino, aberto_por,
+                         origem_dados, canal_compra, publico, criado_em, atualizado_em)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    RETURNING id
+                """, (
+                    protocolo, canal, cnpj, razao_social, email_contato,
+                    tipo_problema, str(r.randint(10000, 99999)), cod_prod, desc_prod,
+                    f"Atendimento dummy referente a {tipo_problema} — {desc_prod}.",
+                    prioridade, status, setor_destino, str(admin_id),
+                    "dummy", canal_compra, publico, criado_em, atualizado_em
+                ))
+                ticket_id = cur.fetchone()[0]
+
+                # Produtos vinculados (1 a 2 itens).
+                n_prod = r.randint(1, 2)
+                for prod2 in r.sample(dummy.PRODUTOS, min(n_prod, len(dummy.PRODUTOS))):
+                    cur.execute("""
+                        INSERT INTO sac_ticket_produtos
+                            (ticket_id, codigo_produto, descricao_produto, quantidade, tipo_problema)
+                        VALUES (%s,%s,%s,%s,%s)
+                    """, (ticket_id, prod2[0], prod2[1], r.randint(1, 8), tipo_problema))
+
+                # Comentário inicial (timeline) — alguns públicos, alguns internos.
+                cur.execute("""
+                    INSERT INTO sac_comentarios (ticket_id, autor_id, texto, visivel_externo, is_system, criado_em)
+                    VALUES (%s,%s,%s,%s,FALSE,%s)
+                """, (
+                    ticket_id, str(admin_id),
+                    f"Chamado registrado via {canal}. Aguardando análise do setor {setor_destino}.",
+                    bool(r.randint(0, 1)), criado_em + timedelta(minutes=r.randint(5, 90))
+                ))
+
+                criados += 1
+
+        conn.commit()
+        return {"ok": True, "skipped": False, "tickets_criados": criados,
+                "meses_cobertos": list(range(1, 13)), "ano": dummy.ANO_BASE}
+    except Exception as e:
+        conn.rollback()
+        return {"ok": False, "erro": str(e)}
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ─────────────────────────────────────────────
 #  Dashboard / Analytics
 # ─────────────────────────────────────────────
 
