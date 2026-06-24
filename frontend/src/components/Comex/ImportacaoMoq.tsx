@@ -165,9 +165,9 @@ const ImportacaoMoq: React.FC<{ user: any }> = ({ user }) => {
     const baixarModelo = () => {
         const headers = ['ITEM NO', 'DESCRIPTION', 'MOQ'];
         const exemplos = [
-            ['10400951', 'DUCHA SLIM QUADRADA 6"', 3000],
-            ['10400952', 'DUCHA SLIM REDONDA 6"', 3000],
-            ['10400166', 'BENGALA REGULAVEL PRETO', 500],
+            ['10400001', 'Produto Demo Alfa', 3000],
+            ['10400002', 'Produto Demo Beta', 3000],
+            ['10400003', 'Produto Demo Gama', 500],
         ];
         const ws = XLSX.utils.aoa_to_sheet([headers, ...exemplos]);
         ws['!cols'] = [{ wch: 14 }, { wch: 38 }, { wch: 10 }];
@@ -292,9 +292,9 @@ const ImportacaoMoq: React.FC<{ user: any }> = ({ user }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-1 font-mono">10400951</td><td className="px-3 py-1">DUCHA SLIM QUADRADA 6"</td><td className="px-3 py-1 text-right tabular-nums">3000</td></tr>
-                                    <tr className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-1 font-mono">10400952</td><td className="px-3 py-1">DUCHA SLIM REDONDA 6"</td><td className="px-3 py-1 text-right tabular-nums">3000</td></tr>
-                                    <tr className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-1 font-mono">10400166</td><td className="px-3 py-1">BENGALA REGULAVEL PRETO</td><td className="px-3 py-1 text-right tabular-nums">500</td></tr>
+                                    <tr className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-1 font-mono">10400001</td><td className="px-3 py-1">Produto Demo Alfa</td><td className="px-3 py-1 text-right tabular-nums">3000</td></tr>
+                                    <tr className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-1 font-mono">10400002</td><td className="px-3 py-1">Produto Demo Beta</td><td className="px-3 py-1 text-right tabular-nums">3000</td></tr>
+                                    <tr className="border-t border-slate-100 dark:border-slate-800"><td className="px-3 py-1 font-mono">10400003</td><td className="px-3 py-1">Produto Demo Gama</td><td className="px-3 py-1 text-right tabular-nums">500</td></tr>
                                 </tbody>
                             </table>
                         </div>

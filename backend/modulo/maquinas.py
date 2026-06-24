@@ -382,6 +382,59 @@ def seed_dummy_maquinas(admin_id: str) -> dict:
                 (mid_inj1, str(admin_id) if admin_id else None),
             )
 
+        # --- 3b) DISTRIBUIÇÃO dos produtos do PLANO entre as Injetoras ---------
+        # Os códigos que caem na Programação de Produção vêm do plano do otimizador
+        # (core.dummy.PRODUTOS) — todos com prefixo "104". A regra de prefixo acima
+        # faz CADA um desses códigos casar com TODAS as Injetoras, então a alocação
+        # automática (por_codigo[cod][0]) jogava tudo numa máquina só. Aqui forçamos
+        # um round-robin: cada código do plano é INCLUÍDO em UMA injetora e EXCLUÍDO
+        # das demais (a exceção tem precedência sobre a regra em resolver_associacoes),
+        # de modo que cada injetora receba uma fatia. Além disso garantimos
+        # maquina_produto_tempo (pecas_hora) para cada par produto×máquina resolvido,
+        # eliminando o aviso "itens sem peças/hora cadastrada".
+        from core import dummy
+        injetoras = [(nm, id_por_nome[nm]) for nm in nomes_maquinas
+                     if nm.upper().startswith("INJETORA") and nm in id_por_nome]
+        cods_plano = []
+        seen_cp = set()
+        for p in dummy.PRODUTOS:
+            c = str(p[0]).strip()
+            if c and c not in seen_cp:
+                seen_cp.add(c)
+                cods_plano.append(c)
+        if injetoras and cods_plano:
+            # peças/hora determinística por código (faixa plausível 80..160)
+            ph_plano = {c: 80 + (int(c[-2:]) % 9) * 10 for c in cods_plano}
+            n_inj = len(injetoras)
+            for idx, cod in enumerate(cods_plano):
+                alvo_nome, alvo_id = injetoras[idx % n_inj]
+                ph = ph_plano[cod]
+                # inclui o código na injetora-alvo
+                cur.execute(
+                    "INSERT INTO maquina_excecoes (maquina_id, cod_item, acao, created_by) "
+                    "VALUES (%s, %s, 'incluir', %s) "
+                    "ON CONFLICT (maquina_id, cod_item) DO UPDATE SET acao = 'incluir'",
+                    (alvo_id, cod, str(admin_id) if admin_id else None),
+                )
+                n_exc += 1
+                cur.execute(
+                    "INSERT INTO maquina_produto_tempo (maquina_id, cod_item, pecas_hora, updated_by) "
+                    "VALUES (%s, %s, %s, %s) ON CONFLICT (maquina_id, cod_item) DO NOTHING",
+                    (alvo_id, cod, ph, str(admin_id) if admin_id else None),
+                )
+                n_tmp += cur.rowcount
+                # exclui o código das demais injetoras (a regra de prefixo "104"
+                # casaria com todas; a exceção 'excluir' tira o código delas)
+                for outro_nome, outro_id in injetoras:
+                    if outro_id == alvo_id:
+                        continue
+                    cur.execute(
+                        "INSERT INTO maquina_excecoes (maquina_id, cod_item, acao, created_by) "
+                        "VALUES (%s, %s, 'excluir', %s) "
+                        "ON CONFLICT (maquina_id, cod_item) DO UPDATE SET acao = 'excluir'",
+                        (outro_id, cod, str(admin_id) if admin_id else None),
+                    )
+
         # --- 4) ESTRUTURA / BOM (estrutura_versao + estrutura_item) ----------
         # Árvore: para alguns produtos-pai (nível 1) cria componentes nível 2/3.
         # O endpoint estrutura_do_produto liga pai->filhos por parent1 = ukeyk13

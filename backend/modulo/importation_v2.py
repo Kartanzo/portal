@@ -349,6 +349,63 @@ def ensure_importacao_v2_modelos_table():
     ])
 
 
+def seed_dummy_moq(admin_id: str) -> dict:
+    """Popula parâmetros do produto (MOQ + medidas) em importacao_v2_moq — a fonte
+    primária da página /importacao-v2/moq ("MOQ por SKU"). IDEMPOTENTE: se já houver
+    qualquer linha, não duplica nada.
+
+    Conexão/commit/rollback próprios (try/finally). Garante a tabela via
+    ensure_importacao_v2_modelos_table() e insere 1 linha por produto de
+    dummy.PRODUTOS (códigos 104000xx), com MOQ, UNIT/CTN, CBM, peso (G.W/N.W),
+    dimensões (LxWxH), preço e origem — todos determinísticos (dummy.rng).
+    Retorna dict com a contagem inserida (ou skipped=True se já populado)."""
+    ensure_importacao_v2_modelos_table()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        # idempotência: já há parâmetros cadastrados? não duplica nada.
+        cur.execute("SELECT COUNT(*) FROM importacao_v2_moq")
+        if (cur.fetchone()[0] or 0) > 0:
+            return {"ok": True, "skipped": True, "motivo": "ja_existem_parametros"}
+
+        origens = ["China", "Brasil"]
+        n = 0
+        for codigo, descricao, unidade, _categoria in dummy.PRODUTOS:
+            r = dummy.rng("importacao_v2_moq", codigo)
+            moq        = float(r.choice([500, 1000, 1500, 2000, 2500, 3000]))
+            unit_ctn   = float(r.choice([12, 24, 36, 48, 60, 100]))
+            comprimento = round(r.uniform(20.0, 60.0), 2)   # cm
+            largura     = round(r.uniform(15.0, 45.0), 2)   # cm
+            altura      = round(r.uniform(10.0, 40.0), 2)   # cm
+            cbm = round((comprimento * largura * altura) / 1_000_000.0, 6)  # m³ por carton
+            gw  = round(r.uniform(8.0, 25.0), 3)            # peso bruto (kg) por carton
+            nw  = round(gw * r.uniform(0.80, 0.95), 3)      # peso líquido < bruto
+            price  = round(r.uniform(2.5, 45.0), 4)         # preço unitário
+            origem = r.choice(origens)
+            cur.execute(
+                """INSERT INTO importacao_v2_moq
+                       (codigo, descricao, moq, origem, updated_by,
+                        unit_ctn, cbm, gw, nw, comprimento, largura, altura,
+                        price, unit)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                   ON CONFLICT (codigo) DO NOTHING""",
+                (codigo, descricao, moq, origem,
+                 int(admin_id) if admin_id and str(admin_id).isdigit() else None,
+                 unit_ctn, cbm, gw, nw, comprimento, largura, altura,
+                 price, unidade),
+            )
+            n += 1
+
+        conn.commit()
+        return {"ok": True, "skipped": False, "parametros": n}
+    except Exception as e:
+        conn.rollback()
+        print(f"[importation_v2] seed_dummy_moq error: {e}")
+        return {"ok": False, "erro": str(e)}
+    finally:
+        cur.close(); conn.close()
+
+
 LABELS_PADRAO = [
     "Planejamento Q1", "Planejamento Q2", "Planejamento Q3", "Planejamento Q4",
     "Revisão mensal", "Revisão semanal", "Teste/Simulação",

@@ -1418,23 +1418,46 @@ def seed_dummy_financeiro(admin_id: str) -> dict:
 
             linhas = []
             row_index = 0
+            n_dep = len(departamentos)
             for conta, grupo, descricao, base_mensal, sinal in _SEED_PLANO_CONTAS:
-                # Distribui o valor mensal entre os departamentos.
-                for dep in departamentos:
-                    # Série determinística por (tipo, conta, departamento).
-                    serie = dummy.serie_mensal(
-                        f"financeiro|{tipo_base}|{conta}|{dep}",
-                        base=base_mensal / len(departamentos),
-                        var=0.18,
-                        tendencia=0.015,
-                    )
-                    r = dummy.rng("financeiro_real_adj", conta, dep)
-                    for i, mes in enumerate(meses):
-                        v = serie[i]["valor"]
-                        # Realizado desvia levemente do orçado (ruído determinístico).
-                        if tipo_base == "realizado":
-                            v = round(v * (1 + r.uniform(-0.12, 0.12)), 2)
-                        valor_final = round(v * sinal, 2)
+                # Correção do "Detalhamento não condiz": geramos PRIMEIRO o total
+                # mensal da conta (o mesmo número que a linha pai do DRE soma) e só
+                # então DISTRIBUÍMOS esse total entre os departamentos com alocação
+                # exata em centavos. Assim a soma das linhas de detalhe (por
+                # departamento) é SEMPRE idêntica ao total da conta no mês, sem
+                # depender de arredondamentos independentes por departamento.
+                serie = dummy.serie_mensal(
+                    f"financeiro|{tipo_base}|{conta}",
+                    base=base_mensal,
+                    var=0.18,
+                    tendencia=0.015,
+                )
+                r_tot = dummy.rng("financeiro_real_adj", conta)
+                # Pesos determinísticos por departamento (constantes no ano), usados
+                # apenas para repartir o total — a soma dos pesos é normalizada.
+                r_w = dummy.rng("financeiro_dep_weights", conta)
+                pesos = [0.6 + r_w.uniform(0.0, 0.8) for _ in departamentos]
+                soma_pesos = sum(pesos) or 1.0
+                for i, mes in enumerate(meses):
+                    total = serie[i]["valor"]
+                    # Realizado desvia levemente do orçado (ruído determinístico),
+                    # aplicado ao TOTAL da conta (não por departamento).
+                    if tipo_base == "realizado":
+                        total = round(total * (1 + r_tot.uniform(-0.12, 0.12)), 2)
+                    # Distribui o total em centavos: arredonda cada parcela e joga o
+                    # residual no último departamento, garantindo soma exata.
+                    total_cents = int(round(total * 100))
+                    parciais = []
+                    acumulado = 0
+                    for k in range(n_dep):
+                        if k == n_dep - 1:
+                            cents = total_cents - acumulado
+                        else:
+                            cents = int(round(total_cents * pesos[k] / soma_pesos))
+                            acumulado += cents
+                        parciais.append(cents)
+                    for k, dep in enumerate(departamentos):
+                        valor_final = round((parciais[k] / 100.0) * sinal, 2)
                         linhas.append((
                             str(base_id),
                             mes,

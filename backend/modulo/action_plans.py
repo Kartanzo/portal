@@ -19,6 +19,158 @@ from auth_utils import get_user_id_from_session
 router = APIRouter()
 
 
+def seed_dummy_estrategico(admin_id: str) -> dict:
+    """Popula a Matriz Estratégica (Planejamento Estratégico / PDCA) com dados dummy de 2026.
+
+    Idempotente: se já existirem objetivos (action_plans) ativos, não insere de novo.
+    Garante as tabelas (CREATE TABLE IF NOT EXISTS) com base no uso real do módulo,
+    cria objetivos nas 4 perspectivas PDCA (PAC/PIP/CLI/FIN via macro_theme) e
+    ações/iniciativas vinculadas com período em 2026, status do ciclo PDCA e
+    responsável = admin_id. Conexão própria.
+    """
+    from core import dummy as _d
+
+    perspectivas = ["PAC", "PIP", "CLI", "FIN"]
+    status_pdca = ["Não Iniciado", "Em Andamento", "Aguardando", "Concluído", "Atrasado"]
+    objetivos_por_persp = {
+        "PAC": ["Padronizar processos operacionais", "Reduzir retrabalho na produção", "Implantar gestão à vista"],
+        "PIP": ["Capacitar lideranças intermediárias", "Programa de melhoria contínua", "Reduzir turnover de equipes"],
+        "CLI": ["Elevar índice de satisfação do cliente", "Reduzir prazo médio de entrega", "Ampliar carteira de clientes ativos"],
+        "FIN": ["Aumentar margem de contribuição", "Reduzir custo fixo operacional", "Otimizar capital de giro"],
+    }
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+
+        # Garante as tabelas (tabelas assumidas pelo módulo, sem CREATE no código).
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS action_plans (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                sector TEXT,
+                objective TEXT,
+                macro_theme TEXT,
+                created_by UUID,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS action_plan_items (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                action_plan_id UUID REFERENCES action_plans(id) ON DELETE CASCADE,
+                actions TEXT,
+                expected_result TEXT,
+                projects TEXT,
+                responsible TEXT[],
+                status TEXT DEFAULT 'Não Iniciado',
+                schedule_start DATE,
+                schedule_end DATE,
+                observation TEXT,
+                budget_planned NUMERIC DEFAULT 0,
+                budget_actual NUMERIC DEFAULT 0,
+                hours_planned INTEGER DEFAULT 0,
+                hours_actual INTEGER DEFAULT 0,
+                roi_percentage NUMERIC DEFAULT 0,
+                stakeholder_satisfaction INTEGER DEFAULT 0,
+                blocked_by_user_id UUID,
+                waiting_for_return TEXT[],
+                created_by UUID,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        conn.commit()
+
+        # Idempotência: não duplica se já houver objetivos ativos.
+        cur.execute("SELECT COUNT(*) FROM action_plans WHERE is_active = TRUE")
+        existentes = cur.fetchone()[0]
+        if existentes and existentes > 0:
+            return {
+                "status": "skipped",
+                "reason": "already_seeded",
+                "objetivos_existentes": int(existentes),
+            }
+
+        meses_2026 = _d.meses(2026)  # date(2026,1,1)..date(2026,12,1)
+        total_obj = 0
+        total_itens = 0
+
+        for persp in perspectivas:
+            setor_r = _d.rng("estrategico", "setor", persp)
+            for idx_obj, objetivo in enumerate(objetivos_por_persp[persp]):
+                setor = _d.escolher(setor_r, _d.SETORES)
+                cur.execute(
+                    "INSERT INTO action_plans (sector, objective, created_by, macro_theme, is_active) "
+                    "VALUES (%s, %s, %s, %s, TRUE) RETURNING id",
+                    (setor, objetivo, str(admin_id), persp),
+                )
+                plan_id = cur.fetchone()[0]
+                total_obj += 1
+
+                r = _d.rng("estrategico", persp, idx_obj)
+                qtd_itens = _d.inteiro(r, 2, 3)
+                for idx_item in range(qtd_itens):
+                    mes_ini = _d.inteiro(r, 1, 8)
+                    mes_fim = min(mes_ini + _d.inteiro(r, 1, 4), 12)
+                    inicio = meses_2026[mes_ini - 1]
+                    fim = meses_2026[mes_fim - 1]
+                    status = _d.escolher(r, status_pdca)
+                    bud_plan = _d.valor(r, base=50000.0, var=0.5)
+                    bud_act = round(bud_plan * (0.6 + r.random() * 0.6), 2)
+                    h_plan = _d.inteiro(r, 40, 400)
+                    h_act = _d.inteiro(r, 0, h_plan)
+                    roi = round(r.uniform(-5.0, 35.0), 1)
+                    satisf = _d.inteiro(r, 1, 5)
+                    cur.execute(
+                        """
+                        INSERT INTO action_plan_items
+                        (action_plan_id, actions, expected_result, projects, responsible, status,
+                         schedule_start, schedule_end, observation, budget_planned, budget_actual,
+                         hours_planned, hours_actual, roi_percentage, stakeholder_satisfaction,
+                         blocked_by_user_id, waiting_for_return, created_by, is_active)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)
+                        """,
+                        (
+                            str(plan_id),
+                            f"Ação {idx_item + 1} — {objetivo}",
+                            f"Resultado esperado para {objetivo.lower()}",
+                            f"Projeto {persp}-{idx_obj + 1}.{idx_item + 1}",
+                            [str(admin_id)],
+                            status,
+                            inicio,
+                            fim,
+                            f"Iniciativa dummy gerada para a perspectiva {persp} (ciclo PDCA 2026).",
+                            bud_plan,
+                            bud_act,
+                            h_plan,
+                            h_act,
+                            roi,
+                            satisf,
+                            None,
+                            [],
+                            str(admin_id),
+                        ),
+                    )
+                    total_itens += 1
+
+        conn.commit()
+        return {
+            "status": "ok",
+            "perspectivas": perspectivas,
+            "objetivos_criados": total_obj,
+            "acoes_criadas": total_itens,
+            "ano": 2026,
+        }
+    except Exception as e:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
 def get_user_context(user_id: str, conn=None):
     should_close = False
     if conn is None:

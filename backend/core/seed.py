@@ -493,6 +493,8 @@ _DOMAIN_SEEDS = [
     ("inter_sector", "modulo.inter_sector", "seed_dummy_inter_sector"),
     ("sac", "modulo.sac", "seed_dummy_sac"),
     ("maquinas", "modulo.maquinas", "seed_dummy_maquinas"),
+    ("estrategico", "modulo.action_plans", "seed_dummy_estrategico"),
+    ("moq", "modulo.importation_v2", "seed_dummy_moq"),
 ]
 
 
@@ -537,6 +539,7 @@ _RESET_TABLES = [
     "inter_sector_ticket_participants", "inter_sector_ticket_updates", "inter_sector_tickets",
     "eventos_album_fotos",
     "maquina_log", "estrutura_item", "estrutura_versao", "maquinas",
+    "action_plan_items", "importacao_v2_moq",
     "sop_dashboard_cache", "otimizador_faturamento_cache",
 ]
 
@@ -582,10 +585,10 @@ def run_dummy_seed() -> None:
         _seed_sectors(cur)
         _seed_categories(cur)
         n_tickets = _seed_tickets(cur, admin_id)
-        n_plans = _seed_action_plans(cur, admin_id)
         conn.commit()
+        # action_plans é semeado pelo dominio 'estrategico' (com perspectivas PDCA).
         logger.info(
-            f"Seed nucleo 2026 OK: admin={ADMIN_EMAIL}, tickets+={n_tickets}, action_plans+={n_plans}"
+            f"Seed nucleo 2026 OK: admin={ADMIN_EMAIL}, tickets+={n_tickets}"
         )
     except Exception as e:
         conn.rollback()
