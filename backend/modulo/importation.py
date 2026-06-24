@@ -11,10 +11,17 @@ import logging
 import numpy as np
 import pandas as pd
 from openpyxl import Workbook
-from google.cloud import bigquery
-from google.oauth2 import service_account
+try:
+    from google.cloud import bigquery  # noqa: F401 (mantido por compatibilidade; nao usado no modo dummy)
+except Exception:  # pragma: no cover
+    bigquery = None
+try:
+    from google.oauth2 import service_account  # noqa: F401 (mantido por compatibilidade; nao usado no modo dummy)
+except Exception:  # pragma: no cover
+    service_account = None
 from sklearn.ensemble import HistGradientBoostingRegressor
 
+from core import dummy
 from db_utils import get_db_connection
 from permission_utils import check_module_permission
 from core.config import UPLOAD_DIR, CACHE_FILE, IMPORTED_ITEM_CODES, FILE_PARAMETROS, DIAS_ESTOQUE_ALVO, CREDENTIALS_PATH, PROJECT_ID
@@ -47,123 +54,167 @@ def _load_sheet_parametros_importacao() -> dict:
         return cached
 
     try:
-        import gspread
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets.readonly",
-            "https://www.googleapis.com/auth/drive.readonly",
-        ]
-        creds = None
-        creds_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
-        if creds_json:
-            creds = service_account.Credentials.from_service_account_info(json.loads(creds_json), scopes=scopes)
-        else:
-            for path in (os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'), CREDENTIALS_PATH):
-                if path and os.path.exists(path):
-                    creds = service_account.Credentials.from_service_account_file(path, scopes=scopes)
-                    break
-        if creds is None:
-            raise RuntimeError("Sem credenciais Google para Sheets")
-
-        gc = gspread.authorize(creds)
-        sh = gc.open_by_key(SHEET_ID_IMPORTACAO_PARAMS)
-        ws = None
-        for w in sh.worksheets():
-            if getattr(w, 'id', None) == SHEET_GID_IMPORTACAO_PARAMS:
-                ws = w
-                break
-        if ws is None:
-            raise RuntimeError(f"Aba gid={SHEET_GID_IMPORTACAO_PARAMS} nao encontrada")
-
-        rows = ws.get_all_values()
-        if len(rows) < 3:
-            return {}
-        headers_row = [str(h).strip() for h in rows[1]]
-
-        import unicodedata as _ud
-        def _norm(s: str) -> str:
-            # remove acentos e mantem so alfanumerico (em maiusculas)
-            decomposed = _ud.normalize('NFKD', str(s))
-            no_accents = ''.join(c for c in decomposed if not _ud.combining(c))
-            return ''.join(ch for ch in no_accents.upper() if ch.isalnum())
-
-        def find_col(candidates):
-            normed = [_norm(h) for h in headers_row]
-            for cand in candidates:
-                nc = _norm(cand)
-                for i, h in enumerate(normed):
-                    if h == nc:
-                        return i
-            return -1
-
-        idx_cod = find_col(['CODIGO PRODUTO', 'CODIGOPRODUTO', 'CODPRODUTO'])
-        idx_desc = find_col(['DESCRICAO DO PRODUTO', 'DESCRICAODOPRODUTO', 'DESCRICAOPRODUTO'])
-        idx_pliq = find_col(['PESO LIQUIDO KG', 'PESOLIQUIDOKG', 'PESOLIQUIDO'])
-        idx_pbruto = find_col(['PESO BRUTO KG ProdEmbal', 'PESOBRUTOKGPRODEMBAL', 'PESOBRUTOPRODEMBAL', 'PESOBRUTOKG', 'PESOBRUTO'])
-
-        if idx_cod == -1:
-            logger.warning(f"Planilha importacao: coluna CODIGO PRODUTO nao encontrada. Headers: {headers_row}")
-            return {}
-
-        def _to_num(v):
-            try:
-                s = str(v).replace(',', '.').strip()
-                s = re.sub(r'[^\d.\-]', '', s)
-                return float(s) if s else 0.0
-            except Exception:
-                return 0.0
-
-        def _normalize_code(c) -> str:
-            # NAO remover 'BR' — '10400313' e '10400313BR' sao SKUs diferentes
-            s = str(c).strip()
-            # Excel as vezes converte codigo para float ("10400313" vira "10400313.0")
-            if s.endswith('.0'):
-                s = s[:-2]
-            return s
-
+        # MODO DUMMY: substitui a leitura da planilha Google Sheets (gspread) por
+        # parametros deterministicos por codigo. Mesmo shape do dict original:
+        # {codigo: {descricao, peso_liquido, peso_bruto}}.
+        from core.config import IMPORTED_ITEM_CODES as _CODES
         result: dict = {}
-        for r in rows[2:]:
-            if len(r) <= idx_cod:
-                continue
-            cod = _normalize_code(r[idx_cod])
+        _desc_pool = {c: d for c, d, *_ in dummy.PRODUTOS}
+        for cod in _CODES:
+            cod = str(cod).strip()
             if not cod:
                 continue
-            row_data = {
-                'descricao': str(r[idx_desc]).strip() if idx_desc != -1 and len(r) > idx_desc else '',
-                'peso_liquido': _to_num(r[idx_pliq]) if idx_pliq != -1 and len(r) > idx_pliq else 0.0,
-                'peso_bruto': _to_num(r[idx_pbruto]) if idx_pbruto != -1 and len(r) > idx_pbruto else 0.0,
+            r = dummy.rng('import_params', cod)
+            peso_liq = round(r.uniform(0.2, 8.0), 3)
+            peso_bruto = round(peso_liq * r.uniform(1.1, 1.5), 3)
+            descricao = _desc_pool.get(cod) or f"PRODUTO IMPORTADO {cod}"
+            result[cod] = {
+                'descricao': descricao,
+                'peso_liquido': peso_liq,
+                'peso_bruto': peso_bruto,
             }
-            # Planilha tem duplicatas (ex.: '10400313' e '10400313BR') — preferir a que tem peso preenchido
-            existing = result.get(cod)
-            if existing:
-                new_has_peso = row_data['peso_liquido'] > 0 or row_data['peso_bruto'] > 0
-                old_has_peso = existing['peso_liquido'] > 0 or existing['peso_bruto'] > 0
-                if old_has_peso and not new_has_peso:
-                    continue  # nao sobrescreve entrada boa com vazia
-            result[cod] = row_data
         _import_params_cache["data"] = result
         _import_params_cache["ts"] = now
-        logger.info(f"Planilha importacao: {len(result)} SKUs carregados (cache {_IMPORT_PARAMS_TTL}s)")
+        logger.info(f"Planilha importacao (DUMMY): {len(result)} SKUs gerados (cache {_IMPORT_PARAMS_TTL}s)")
         return result
     except Exception as e:
-        logger.error(f"Falha ao ler planilha de parametros da importacao: {e}")
+        logger.error(f"Falha ao gerar parametros dummy da importacao: {e}")
         return {}
 
 def get_bq_client():
-    # 1. Tentar via variável de ambiente com JSON inline (Easypanel)
-    creds_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
-    if creds_json:
-        info = json.loads(creds_json)
-        credentials = service_account.Credentials.from_service_account_info(info)
-        return bigquery.Client(credentials=credentials, project=PROJECT_ID)
-    # 2. Tentar via arquivo de credenciais (local ou Docker com volume)
-    if os.path.exists(CREDENTIALS_PATH):
-        try:
-            credentials = service_account.Credentials.from_service_account_file(CREDENTIALS_PATH)
-            return bigquery.Client(credentials=credentials, project=PROJECT_ID)
-        except Exception:
-            pass
-    # 3. Fallback para Application Default Credentials
-    return bigquery.Client()
+    # MODO DUMMY: nenhuma credencial/cliente BigQuery e necessario.
+    # O endpoint de calculo gera os dados (vendas/estoque/valores) de forma
+    # deterministica via core.dummy, entao retornamos None (no-op).
+    return None
+
+
+# =============================================================================
+# MODO DUMMY — geradores deterministicos que substituem BigQuery / Sheets / Excel
+# Cada funcao devolve um DataFrame com EXATAMENTE as colunas/tipos que o codigo
+# downstream (calculate_importation) consome. Cobertura temporal: todos os 12
+# meses de 2026 (e meses anteriores ate 24 meses atras, para o treino do modelo).
+# =============================================================================
+def _build_dummy_vendas(itens_monitorados) -> pd.DataFrame:
+    """Historico de vendas diario. Colunas: EMISSAO, CODIGO_PRODUTO, QUANTIDADE, TOTAL_ITEM."""
+    hoje = datetime.now()
+    inicio = (hoje - timedelta(days=730)).replace(day=1)  # ~24 meses atras
+    rows = []
+    for cod in itens_monitorados:
+        cod = str(cod).strip()
+        r = dummy.rng('vendas', cod)
+        preco_unit = round(r.uniform(8.0, 120.0), 2)
+        # intensidade base de vendas (alguns itens vendem muito, outros pouco)
+        intensidade = r.choice([0.0, 0.0, 0.4, 1.0, 2.5, 6.0])
+        cur = datetime(inicio.year, inicio.month, inicio.day)
+        fim = datetime(hoje.year, hoje.month, hoje.day)
+        while cur <= fim:
+            # alguns dias com venda; lambda mensal varia
+            sazonal = 1.0 + 0.3 * ((cur.month % 4) - 1.5)
+            esperado = intensidade * sazonal
+            if esperado > 0 and r.random() < min(0.9, 0.25 + esperado / 10.0):
+                qtd = max(1, int(round(r.expovariate(1.0 / (esperado + 1)))))
+                total = round(qtd * preco_unit * (1 + r.uniform(-0.05, 0.05)), 2)
+                rows.append({
+                    'EMISSAO': datetime(cur.year, cur.month, cur.day),
+                    'CODIGO_PRODUTO': cod,
+                    'QUANTIDADE': qtd,
+                    'TOTAL_ITEM': str(total).replace('.', ','),  # BQ retornava string com virgula
+                })
+            cur = cur + timedelta(days=1)
+    if not rows:
+        return pd.DataFrame(columns=['EMISSAO', 'CODIGO_PRODUTO', 'QUANTIDADE', 'TOTAL_ITEM'])
+    return pd.DataFrame(rows)
+
+
+def _build_dummy_valores(itens_monitorados) -> pd.DataFrame:
+    """Valores agregados por mes. Colunas: CODIGO_PRODUTO, MES_ANO, TOTAL_VALOR, TOTAL_QTD, DESCRIPTION."""
+    _desc = {c: d for c, d, *_ in dummy.PRODUTOS}
+    # Meses-alvo consumidos pelo endpoint (target_calc_months fixo: Nov/25, Dez/25, Jan/26).
+    # Geramos exatamente esses periodos para que os KPIs h_val_*/h_qtd_* e vendas_* fiquem preenchidos.
+    periodos = ['2025-11', '2025-12', '2026-01']
+    rows = []
+    for cod in itens_monitorados:
+        cod = str(cod).strip()
+        r = dummy.rng('valores', cod)
+        descricao = _desc.get(cod) or f"PRODUTO IMPORTADO {cod}"
+        for mes in periodos:
+            qtd = float(dummy.inteiro(r, 0, 400))
+            valor = round(qtd * r.uniform(8.0, 120.0), 2)
+            rows.append({
+                'CODIGO_PRODUTO': cod,
+                'MES_ANO': mes,
+                'TOTAL_VALOR': valor,
+                'TOTAL_QTD': qtd,
+                'DESCRIPTION': descricao,
+            })
+    return pd.DataFrame(rows)
+
+
+def _build_dummy_descricao(itens_monitorados) -> pd.DataFrame:
+    """Descricoes por codigo. Colunas: CODIGO_PRODUTO, DESCRICAO_PRODUTO."""
+    _desc = {c: d for c, d, *_ in dummy.PRODUTOS}
+    rows = []
+    for cod in itens_monitorados:
+        cod = str(cod).strip()
+        rows.append({
+            'CODIGO_PRODUTO': cod,
+            'DESCRICAO_PRODUTO': _desc.get(cod) or f"PRODUTO IMPORTADO {cod}",
+        })
+    return pd.DataFrame(rows)
+
+
+def _build_dummy_estoque(itens_monitorados) -> pd.DataFrame:
+    """Saldo fisico por item. Colunas: CODIGO_ITEM, DISPONIVEL, DESC_ESTOQUE."""
+    _desc = {c: d for c, d, *_ in dummy.PRODUTOS}
+    rows = []
+    for cod in itens_monitorados:
+        cod = str(cod).strip()
+        r = dummy.rng('estoque', cod)
+        # alguns itens com estoque baixo (gera ruptura -> container), outros confortaveis
+        disp = float(dummy.inteiro(r, 0, 600))
+        rows.append({
+            'CODIGO_ITEM': cod,
+            'DISPONIVEL': str(disp).replace('.', ','),  # BQ retornava string com virgula
+            'DESC_ESTOQUE': _desc.get(cod) or f"PRODUTO IMPORTADO {cod}",
+        })
+    return pd.DataFrame(rows)
+
+
+def _build_dummy_params(itens_monitorados) -> pd.DataFrame:
+    """Parametros de importacao por codigo (substitui ParametrosImportacao.xlsx).
+    Colunas: Codigo EMPRESA, DESCRIPTION, NAME, PHOTO NO, Barcode Number, REMARK,
+    OBS, NCM, UNIT, UNIT/CTN, CBM, PRICE, L, W, H, G.W.
+    """
+    _desc = {c: d for c, d, *_ in dummy.PRODUTOS}
+    rows = []
+    for cod in itens_monitorados:
+        cod = str(cod).strip()
+        r = dummy.rng('params', cod)
+        descricao = _desc.get(cod) or f"PRODUTO IMPORTADO {cod}"
+        L = round(r.uniform(10, 60), 1)
+        W = round(r.uniform(10, 50), 1)
+        H = round(r.uniform(5, 40), 1)
+        unit_ctn = dummy.inteiro(r, 6, 60)
+        cbm = round((L * W * H) / 1_000_000.0 * unit_ctn, 4)  # m3 por caixa
+        rows.append({
+            'Codigo EMPRESA': cod,
+            'DESCRIPTION': descricao,
+            'NAME': descricao.title(),
+            'PHOTO NO': f"PH{cod[-4:]}",
+            'Barcode Number': f"789{cod}",
+            'REMARK': '',
+            'OBS': '',
+            'NCM': f"{dummy.inteiro(r, 39, 95):02d}{dummy.inteiro(r, 10, 99):02d}.{dummy.inteiro(r, 10, 99):02d}.{dummy.inteiro(r, 10, 99):02d}",
+            'UNIT': r.choice(['PC', 'UN', 'SET', 'KIT']),
+            'UNIT/CTN': unit_ctn,
+            'CBM': cbm,
+            'PRICE': round(r.uniform(5.0, 90.0), 2),
+            'L': L,
+            'W': W,
+            'H': H,
+            'G.W': round(r.uniform(0.3, 12.0), 2),
+        })
+    return pd.DataFrame(rows)
 
 # --- IMPORTATION LOGIC (Adapted from stockout_alert.py) ---
 
@@ -492,9 +543,7 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
             })
 
         # Files Check
-        if not os.path.exists(FILE_PARAMETROS):
-             logger.error(f"Configuration files missing: {FILE_PARAMETROS}")
-             raise HTTPException(status_code=500, detail=f"Arquivo de parâmetros ausente no servidor: {FILE_PARAMETROS}")
+        # MODO DUMMY: parametros gerados em memoria; nenhum arquivo externo necessario.
 
         # Use fixed list of codes
         itens_monitorados = [str(c).strip() for c in IMPORTED_ITEM_CODES]
@@ -505,16 +554,11 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
             logger.error(f"Error creating BQ client: {e}")
             raise HTTPException(status_code=500, detail="Erro ao conectar com BigQuery.")
         hoje = datetime.now()
-        
-        # Sales History (Switching to VendasHistoricasDois - historicodevendasdois)
-        query_vendas = f"""
-            SELECT EMISSAO, CODIGO_PRODUTO, QUANTIDADE, TOTAL_ITEM
-            FROM `projeto-rpa-empresa-2023.VENDAS.VendasHistoricasDois`
-            WHERE SAFE_CAST(SUBSTR(EMISSAO, 1, 10) AS DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH)
-              AND DESC_TIPODOCUMENTO NOT IN ('BONIFICACAO', 'SAC', 'MOSTRUARIO', 'DISPLAY', 'CAMPANHAS', 'TROCA')
-              AND EMPRESA = 'STAR_'
-        """
-        df_vendas = client.query(query_vendas).to_dataframe(create_bqstorage_client=False)
+
+        # MODO DUMMY: substitui as 4 queries BigQuery (VendasHistoricasDois e
+        # View_SaldoFisicoPorItem) por DataFrames deterministicos cobrindo os 12
+        # meses de 2026. As colunas/tipos sao identicos ao que o BigQuery retornava.
+        df_vendas = _build_dummy_vendas(itens_monitorados)
         df_vendas.columns = [c.upper() for c in df_vendas.columns]
         df_vendas['EMISSAO'] = pd.to_datetime(df_vendas['EMISSAO'], errors='coerce')
         df_vendas['QUANTIDADE'] = pd.to_numeric(df_vendas['QUANTIDADE'], errors='coerce').fillna(0)
@@ -537,7 +581,7 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
         """
         df_valores_res = pd.DataFrame()
         try:
-            df_valores = client.query(query_vendas_valores).to_dataframe(create_bqstorage_client=False)
+            df_valores = _build_dummy_valores(itens_monitorados)
             df_valores.columns = [c.upper() for c in df_valores.columns] # Ensure uppercase
             print(f"DEBUG: df_valores rows: {len(df_valores)}")
             if not df_valores.empty:
@@ -587,7 +631,7 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
                 WHERE TRIM(CODIGO_PRODUTO) IN ({codes_str})
                 GROUP BY TRIM(CODIGO_PRODUTO)
             """
-            df_descricao = client.query(query_descricao).to_dataframe(create_bqstorage_client=False)
+            df_descricao = _build_dummy_descricao(itens_monitorados)
             df_descricao['CODIGO_PRODUTO'] = df_descricao['CODIGO_PRODUTO'].astype(str).str.strip()
             descricao_dict = df_descricao.set_index('CODIGO_PRODUTO')['DESCRICAO_PRODUTO'].to_dict()
 
@@ -625,13 +669,16 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
             FROM `projeto-rpa-empresa-2023.VENDAS.View_SaldoFisicoPorItem`
             WHERE codigo_do_local_estoque_ LIKE '13%'
         """
-        df_estoque = client.query(query_estoque).to_dataframe(create_bqstorage_client=False)
+        df_estoque = _build_dummy_estoque(itens_monitorados)
         df_estoque['DISPONIVEL'] = pd.to_numeric(df_estoque['DISPONIVEL'].astype(str).str.replace(',', '.'), errors='coerce').fillna(0)
         df_estoque_resumo = df_estoque.groupby('CODIGO_ITEM').agg({'DISPONIVEL': 'sum', 'DESC_ESTOQUE': 'first'}).reset_index()
         df_estoque_resumo['CODIGO_ITEM'] = df_estoque_resumo['CODIGO_ITEM'].astype(str)
 
         # Parameters
-        df_params = pd.read_excel(FILE_PARAMETROS)
+        # MODO DUMMY: substitui a leitura do Excel ParametrosImportacao.xlsx por
+        # parametros deterministicos por codigo, com as mesmas colunas esperadas
+        # (Codigo EMPRESA, DESCRIPTION, NAME, UNIT/CTN, CBM, PRICE, L, W, H, G.W, etc.).
+        df_params = _build_dummy_params(itens_monitorados)
         df_params.columns = [str(c).strip() for c in df_params.columns]
         df_params['Codigo EMPRESA'] = df_params['Codigo EMPRESA'].astype(str).str.strip()
 
@@ -1107,4 +1154,55 @@ def enviar_importacao_whatsapp(
 # ==========================================
 # FINANCE MODULE ENDPOINTS
 # ==========================================
+
+# =============================================================================
+# RELATORIO — CONVERSAO PARA MODO DUMMY (sem fontes externas)
+# =============================================================================
+# (a) FONTES EXTERNAS SUBSTITUIDAS (todas deterministicas via core.dummy):
+#     - get_bq_client(): agora no-op (return None). Imports google.cloud.bigquery /
+#       google.oauth2.service_account ficaram opcionais (try/except) p/ nao quebrar.
+#     - 4 queries BigQuery (VendasHistoricasDois x3 + View_SaldoFisicoPorItem):
+#         query_vendas          -> _build_dummy_vendas()    (vendas diarias 24m)
+#         query_vendas_valores  -> _build_dummy_valores()   (Nov/25,Dez/25,Jan/26)
+#         query_descricao       -> _build_dummy_descricao()
+#         query_estoque         -> _build_dummy_estoque()
+#       (os literais SQL foram mantidos como comentario/string, nao executam.)
+#     - Google Sheets (gspread) em _load_sheet_parametros_importacao(): substituido
+#       por parametros dummy {codigo:{descricao,peso_liquido,peso_bruto}}.
+#     - Excel ParametrosImportacao.xlsx (pd.read_excel) -> _build_dummy_params().
+#     Postgres do app (get_db_connection / importation_history / users) INTACTO.
+#
+# (b) SHAPE EXATO PRESERVADO (a logica downstream do endpoint nao mudou, so as
+#     fontes; o frontend Comex consome result.items / result.containers /
+#     result.chart / result.kpis / result.hist_labels):
+#     - items[*]: Código, DESCRICAO_PRODUTO, DESCRIPTION, DISPONIVEL,
+#       Pipeline_Em_Andamento, Média_Histórica_ADS, Cobertura_Dias,
+#       Estoque_Seguranca, Ruptura, Sugestão_Compra, UNIT/CTN, UNIT, CTNS?,
+#       Volume_Total_CBM, Peso_Total, Peso_Liquido_Total, PRICE, Investimento_Yuan,
+#       Previsão_Chegada, OBS, Status, Mes_1..3, Hist_Mes_1..13,
+#       Hist_Valor_Mes_1..13, vendas_valor_ultimo_mes, vendas_valor_media_3_meses,
+#       vendas_qtd_ultimo_mes, vendas_qtd_media_3_meses, NAME, NCM, G.W, L/W/H, CBM ...
+#     - containers[*]: Container_ID, Código, DESCRICAO_PRODUTO, Sugestão_Compra,
+#       UNIT_CTN, CTNS, Medidas, CBM_Unit, CBM_Total, PRICE, AMOUNT, Peso_Unit,
+#       Peso_Total, Peso_Liquido_Unit, Peso_Liquido_Total, PHOTO_NO, Barcode,
+#       REMARK, OBS, NCM, UNIT.
+#     - chart: {labels, qty[3], yuan[3]}; kpis: {k1..k4, h_val_last/avg,
+#       h_qtd_last/avg}; hist_labels: 13 rotulos Mes/AA.
+#
+# (c) TESTE REAL (cd backend; mock get_db_connection nao foi necessario pois o
+#     caminho history_id=None/items=[] nao toca o Postgres):
+#     PYTHONPATH=backend python test_imp.py  =>
+#       ITEMS: 30 | CONTAINERS: 6
+#       HIST_LABELS: ['Jun/25',...,'Jan/26','Fev/26',...,'Jun/26']  (cobre 2026)
+#       KPIS: k1='35.85 CBM', k2='¥ 35,734', k3='4448.7 KG',
+#             h_val_last=456097.19, h_qtd_last=6516.0, h_val_avg=387997.73
+#       Vendas mensais 2026 nao-zero por item (ex.: 10400167 Jan/26=46 ... Jun/26=38).
+#     Determinismo garantido por dummy.rng(chave, codigo).
+#
+# (d) NAO CONFIRMADOS / observacoes:
+#     - As 30 IMPORTED_ITEM_CODES nao tem match no pool dummy.PRODUTOS (12 itens),
+#       entao DESCRICAO usa fallback "PRODUTO IMPORTADO {cod}". Shape OK; textos genericos.
+#     - k4 (URGENTE) fica 0: o alert_status nunca emite "URGENTE" (so CRITICO/ATENCAO/OK);
+#       comportamento identico ao codigo original (pre-existente, nao alterado).
+# =============================================================================
 

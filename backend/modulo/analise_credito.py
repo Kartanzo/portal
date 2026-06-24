@@ -21,6 +21,8 @@ from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException, Depends
 
+from core import dummy
+
 from db_utils import get_db_connection
 from permission_utils import check_module_permission
 from auth_utils import get_user_id_from_session
@@ -133,30 +135,68 @@ def _google_creds():
     raise RuntimeError("Credenciais Google não encontradas")
 
 
+def _cnpj_fake(r) -> str:
+    """CNPJ claramente fictício: 00.000.000/00XX-NN (não corresponde a nenhum CNPJ real)."""
+    seq = r.randint(1, 999)
+    dv = r.randint(0, 99)
+    return f"00.000.000/{seq:04d}-{dv:02d}"
+
+
+def _colunas_dummy(tipo: str) -> List[str]:
+    """Cabeçalhos fictícios estáveis para cada aba (maxi ~82 colunas, completo ~357)."""
+    base = [COL_DATA, COL_CNPJ, COL_RAZAO]
+    n = 79 if tipo == "maxi" else 354  # totaliza ~82 e ~357 com as 3 de identidade
+    extras = [f"campo_{tipo}_{i:03d}" for i in range(1, n + 1)]
+    return base + extras
+
+
 def _ler_worksheet(ws_title: str) -> List[dict]:
-    """Lê uma aba e devolve lista de dicts {cabeçalho: valor}. Cabeçalhos duplicados ganham sufixo __2, __3..."""
-    import gspread
-    gc = gspread.authorize(_google_creds())
-    sh = gc.open_by_key(SHEET_ID)
-    ws = sh.worksheet(ws_title)
-    vals = ws.get_all_values()
-    if not vals:
-        return []
-    raw_hdr = [h.strip() for h in vals[0]]
-    hdr, seen = [], {}
-    for h in raw_hdr:
-        h = h or "coluna"
-        if h in seen:
-            seen[h] += 1
-            hdr.append(f"{h}__{seen[h]}")
-        else:
-            seen[h] = 1
-            hdr.append(h)
-    out = []
-    for r in vals[1:]:
-        if not any((c or "").strip() for c in r):
-            continue
-        out.append({hdr[i]: (r[i] if i < len(r) else "") for i in range(len(hdr))})
+    """Devolve lista de dicts {cabeçalho: valor} com dados dummy determinísticos.
+
+    Substitui a leitura do Google Sheets (service account) por empresas fictícias
+    com histórico em 2026 (12 meses). Cabeçalhos duplicados ganham sufixo __2, __3...
+    """
+    tipo = WORKSHEETS.get(ws_title, "maxi")
+    hdr = _colunas_dummy(tipo)
+    situacoes = ["ATIVA", "ATIVA", "ATIVA", "INAPTA", "SUSPENSA", "BAIXADA"]
+    portes = ["ME", "EPP", "DEMAIS", "MEI"]
+    out: List[dict] = []
+    # Histórico em 2026, garantindo consultas em TODOS os 12 meses.
+    for mes in range(1, 13):
+        n_no_mes = 3 if tipo == "maxi" else 2
+        for k in range(n_no_mes):
+            r = dummy.rng("analise_credito", tipo, mes, k)
+            dia = dummy.dia_aleatorio(dummy.ANO_BASE, mes, r)
+            razao = dummy.escolher(r, dummy.CLIENTES)
+            cnpj = _cnpj_fake(r)
+            uf = dummy.escolher(r, dummy.ESTADOS)
+            cidade = dummy.escolher(r, dummy.CIDADES)
+            score = r.randint(0, 1000)
+            row = {}
+            for col in hdr:
+                if col == COL_DATA:
+                    row[col] = dia.strftime("%d/%m/%Y")
+                elif col == COL_CNPJ:
+                    row[col] = cnpj
+                elif col == COL_RAZAO:
+                    row[col] = razao
+                else:
+                    # preenche o restante das colunas com valores fictícios variados
+                    idx = hdr.index(col)
+                    bucket = idx % 6
+                    if bucket == 0:
+                        row[col] = str(score)
+                    elif bucket == 1:
+                        row[col] = dummy.escolher(r, situacoes)
+                    elif bucket == 2:
+                        row[col] = uf
+                    elif bucket == 3:
+                        row[col] = cidade
+                    elif bucket == 4:
+                        row[col] = f"R$ {dummy.valor(r, base=5000.0):.2f}"
+                    else:
+                        row[col] = dummy.escolher(r, portes)
+            out.append(row)
     return out
 
 

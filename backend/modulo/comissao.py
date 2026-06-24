@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from db_utils import get_db_connection
 from permission_utils import check_module_permission
 from auth_utils import get_user_id_from_session
+from core import dummy
 
 router = APIRouter(prefix="/financeiro/comissao", tags=["Comissão"])
 
@@ -92,101 +93,85 @@ def _chave_sync(mes: str, ref: str, cod: str) -> str:
 #  Google (Sheets via gspread; Drive via REST + token google-auth)
 # ─────────────────────────────────────────────
 def _google_creds():
-    from google.oauth2 import service_account
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-    if creds_json:
-        return service_account.Credentials.from_service_account_info(json.loads(creds_json), scopes=_SCOPES)
-    paths = [os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")] + _CRED_CANDIDATES
-    for p in paths:
-        if p and os.path.exists(p):
-            return service_account.Credentials.from_service_account_file(p, scopes=_SCOPES)
-    raise RuntimeError("Credenciais Google não encontradas")
+    # DUMMY: sem fontes externas — não há credenciais Google a carregar.
+    # Mantido como no-op para preservar a assinatura usada pelas funções abaixo.
+    return None
 
 
 def _ler_planilha() -> List[dict]:
-    import gspread
-    gc = gspread.authorize(_google_creds())
-    sh = gc.open_by_key(SHEET_ID)
-    ws = sh.sheet1
-    vals = ws.get_all_values()
-    if not vals:
-        return []
-    hdr = [h.strip() for h in vals[0]]
-    out = []
-    for r in vals[1:]:
-        row = {hdr[i]: (r[i] if i < len(r) else "") for i in range(len(hdr))}
-        out.append(row)
+    # DUMMY: gera linhas fictícias da planilha CONTROLE_COMISSAO (sem gspread).
+    # Para cada representante, 12 meses de 2026 e uma referência por mês.
+    # Mantém o mesmo shape (dict por linha com as chaves que /sync espera).
+    out: List[dict] = []
+    for cod, nome in dummy.REPRESENTANTES:
+        r = dummy.rng("comissao_planilha", cod)
+        for i, mes_longo in enumerate(dummy.MESES_PT_LONGO):
+            mm = f"{i + 1:02d}"
+            mes_comissao = f"{mes_longo}/{dummy.ANO_BASE}"
+            referencia = f"{mm}/{dummy.ANO_BASE} - {nome}"
+            comissao = f"{dummy.valor(r, base=3000.0, var=0.5):.2f}".replace(".", ",")
+            premio = f"{dummy.valor(r, base=800.0, var=0.6):.2f}".replace(".", ",")
+            total = f"{dummy.valor(r, base=3800.0, var=0.5):.2f}".replace(".", ",")
+            validacao = dummy.escolher(r, ["VALIDADO", "REPROVADO", ""])
+            out.append({
+                "CÓDIGO_DO_VENDEDOR": cod,
+                "NOME_FANTASIA": nome,
+                "MES_COMISSAO": mes_comissao,
+                "REFERENCIA": referencia,
+                "COMISSÃO": comissao,
+                "total_a_receber": total,
+                "PDF": f"CONTROLE_COMISSAO_Files_/{cod}-{nome}_{dummy.inteiro(r, 10**12, 10**13)}.PDF.pdf",
+                "VALIDACAO_FINANCEIRO": validacao,
+                "EMAIL": f"{norm_cod(cod) or cod}@dummy.local",
+                "premio": premio,
+                "PREMIAÇÃO": premio,
+                "TOTAL": total,
+                "realizado": f"{dummy.valor(r, base=50000.0):.2f}".replace(".", ","),
+                "meta": f"{dummy.valor(r, base=45000.0):.2f}".replace(".", ","),
+                "percentual": f"{dummy.inteiro(r, 1, 12)}%",
+                "chave_vendedor": cod,
+                "CHAVE": f"{cod}-{mm}",
+            })
     return out
 
 
 def _ler_emails() -> dict:
-    """Mapa codigo_norm -> (email_primario, email_secundario) da planilha de e-mails (por CÓD REPRES)."""
-    import gspread
-    gc = gspread.authorize(_google_creds())
-    ws = gc.open_by_key(EMAIL_SHEET_ID).sheet1
-    vals = ws.get_all_values()
-    if not vals:
-        return {}
-    hdr = [_strip_accents(h).strip().upper() for h in vals[0]]
-    def idx(name):
-        alvo = _strip_accents(name).upper()
-        for i, h in enumerate(hdr):
-            if h == alvo:
-                return i
-        return -1
-    ic, ip, isx = idx("COD REPRES"), idx("EMAIL PRIMARIO"), idx("EMAIL SECUNDARIO")
+    """Mapa codigo_norm -> (email_primario, email_secundario). DUMMY: e-mails fictícios por código de representante."""
     out = {}
-    for r in vals[1:]:
-        cod = norm_cod(r[ic]) if 0 <= ic < len(r) else ""
-        if not cod:
+    for cod, _nome in dummy.REPRESENTANTES:
+        cn = norm_cod(cod)
+        if not cn:
             continue
-        p = r[ip].strip() if 0 <= ip < len(r) else ""
-        sec = r[isx].strip() if 0 <= isx < len(r) else ""
-        out[cod] = (p, sec)
+        out[cn] = (f"{cn}@dummy.local", f"{cn}.cc@dummy.local")
     return out
 
 
 def _drive_token() -> str:
-    from google.auth.transport.requests import Request
-    creds = _google_creds()
-    creds.refresh(Request())
-    return creds.token
+    # DUMMY: sem Drive — token fictício (não usado em chamada de rede).
+    return "dummy-token"
 
 
 def _drive_buscar_baixar(pdf_ref: str, token: Optional[str] = None):
-    """Dado o valor da coluna PDF (ex.: 'CONTROLE_COMISSAO_Files_/24-...._7344371024536735113.PDF.151845.pdf'),
-    localiza o arquivo no Drive e retorna (bytes, mime_type, nome). Retorna None se não achar."""
+    """DUMMY: NÃO acessa o Drive. Gera um PDF mínimo válido em memória e retorna
+    (bytes, mime_type, nome) — mesmo shape do original. Retorna None se pdf_ref vazio."""
     nome = (pdf_ref or "").split("/")[-1].strip()
     if not nome:
         return None
-    if token is None:
-        token = _drive_token()
-    headers = {"Authorization": f"Bearer {token}"}
-    # Busca preferencial pelo ID numérico longo embutido no nome (mais robusto que o nome com acentos).
-    m = re.search(r"(\d{10,})", nome)
-    if m:
-        q = f"name contains '{m.group(1)}'"
-    else:
-        q = "name = '" + nome.replace("\\", "\\\\").replace("'", "\\'") + "'"
-    params = {
-        "q": q,
-        "fields": "files(id,name,mimeType)",
-        "pageSize": "5",
-        "includeItemsFromAllDrives": "true",
-        "supportsAllDrives": "true",
-    }
-    r = requests.get("https://www.googleapis.com/drive/v3/files", headers=headers, params=params, timeout=60)
-    r.raise_for_status()
-    files = r.json().get("files", [])
-    if not files:
-        return None
-    f = files[0]
-    dl = requests.get(
-        f"https://www.googleapis.com/drive/v3/files/{f['id']}",
-        headers=headers, params={"alt": "media", "supportsAllDrives": "true"}, timeout=120,
+    # PDF mínimo válido (%PDF ... %%EOF) com uma página em branco, gerado em memória.
+    pdf_bytes = (
+        b"%PDF-1.4\n"
+        b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\n"
+        b"xref\n0 4\n"
+        b"0000000000 65535 f \n"
+        b"0000000009 00000 n \n"
+        b"0000000058 00000 n \n"
+        b"0000000115 00000 n \n"
+        b"trailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n190\n%%EOF\n"
     )
-    dl.raise_for_status()
-    return dl.content, f.get("mimeType") or "application/pdf", f.get("name") or nome
+    nome_pdf = nome if nome.lower().endswith(".pdf") else f"{nome}.pdf"
+    return pdf_bytes, "application/pdf", nome_pdf
 
 
 # ─────────────────────────────────────────────
@@ -673,14 +658,9 @@ CC_FIXOS = ["comissao@empresa.com.br", "vendas@empresa.com.br"]
 
 
 def _gmail_creds():
-    u = os.environ.get("GMAIL_USER"); pw = os.environ.get("GMAIL_PASSWORD")
-    if u and pw:
-        return u, pw
-    for path in (os.path.join(_HERE, "..", "cred.json"), "cred.json", os.path.join(_HERE, "..", "..", "cred.json")):
-        if os.path.exists(path):
-            d = json.load(open(path, encoding="utf-8"))
-            return d.get("gmail"), d.get("passwordGmail")
-    raise RuntimeError("Credenciais de e-mail (Gmail) não encontradas")
+    # DUMMY: sem envio externo — credenciais fictícias. O login SMTP real falhará
+    # e cada e-mail é registrado como falha (nenhuma mensagem sai), comportamento esperado sem fontes externas.
+    return "dummy@dummy.local", "dummy-password"
 
 
 def _parse_ref_py(ref: str):
@@ -852,3 +832,39 @@ def enviar_emails(body: EnviarEmailsBody, user_id: Optional[str] = Depends(get_u
 
     return {"ok": True, "enviados": enviados, "falhas": falhas, "pulados": pulados, "restantes": restantes,
             "assunto": assunto, "limite_atingido": stop.is_set()}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  RELATÓRIO — Conversão para dados dummy (sem fontes externas)
+# ─────────────────────────────────────────────────────────────────────────────
+# (a) FONTES EXTERNAS SUBSTITUÍDAS:
+#     - _google_creds()      -> no-op, retorna None (nenhuma credencial Google é carregada).
+#     - _ler_planilha()      -> gera 144 linhas fictícias (12 representantes x 12 meses de 2026)
+#                               via dummy.REPRESENTANTES/MESES_PT_LONGO/rng/valor; sem gspread.
+#     - _ler_emails()        -> mapa codigo_norm -> (primario, secundario) fictícios
+#                               ("<cod>@dummy.local" / "<cod>.cc@dummy.local"); sem gspread.
+#     - _drive_token()       -> retorna "dummy-token" (não usado em rede).
+#     - _drive_buscar_baixar -> NÃO acessa o Drive; gera um PDF mínimo válido em memória
+#                               (%PDF-1.4 ... %%EOF, 1 página em branco) e devolve os bytes.
+#     - _gmail_creds()       -> credenciais fictícias; o login SMTP real falha e cada e-mail
+#                               é registrado como "falha" (nenhuma mensagem externa sai).
+#
+# (b) SHAPE/RETORNO PRESERVADO (idêntico ao original):
+#     - _ler_planilha  -> List[dict] (chaves CÓDIGO_DO_VENDEDOR/MES_COMISSAO/REFERENCIA/PDF/etc.).
+#     - _ler_emails    -> dict { codigo_norm: (str, str) }.
+#     - _drive_buscar_baixar -> tuple (bytes, mime_type, nome) ou None se pdf_ref vazio.
+#     - _drive_token/_gmail_creds -> mesmos tipos (str / (str,str)).
+#     Toda a lógica de Postgres (comissao_registro/comissao_documento/upload/validação/sync)
+#     permanece INTACTA — nenhuma assinatura, rota, permissão ou query foi alterada.
+#
+# (c) TESTE REAL (cd backend && /c/Python312/python -c ...), get_db_connection mockado:
+#     EMAILS count: 12  | sample 101 -> ('101@dummy.local', '101.cc@dummy.local')
+#     DRIVE tuple len: 3 | mime: application/pdf | bytes head: %PDF-1.4 | valid PDF: True | size: 329
+#     DRIVE empty ref -> None
+#     PLANILHA rows: 144 | distinct meses (ano 2026): 12 | sample REF: '01/2026 - Representante 01'
+#     GMAIL creds: ('dummy@dummy.local','dummy-password') | DRIVE token: dummy-token | GOOGLE creds: None
+#
+# (d) NÃO CONFIRMADOS (não exercitados end-to-end, dependem de Postgres real):
+#     - Rotas /sync, /buscar-drive, /enviar-emails só foram validadas no nível das funções
+#       dummy que elas chamam; o caminho completo com banco não foi executado.
+#     - O envio SMTP em /enviar-emails resultará em "falhas" (sem rede), como esperado.

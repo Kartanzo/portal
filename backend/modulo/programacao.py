@@ -37,14 +37,10 @@ _OP_TABELA = "projeto-rpa-empresa-2023.VIEW.view_ORDEM_PRODUCAO"
 
 
 def _bq_client():
-    from google.cloud import bigquery
-    from google.oauth2 import service_account
-    info_env = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-    if info_env:
-        credentials = service_account.Credentials.from_service_account_info(json.loads(info_env))
-    else:
-        credentials = service_account.Credentials.from_service_account_file(os.path.normpath(_BQ_KEY_FILE))
-    return bigquery.Client(credentials=credentials, project=_BQ_PROJECT)
+    # Dummy: sem fontes externas. BigQuery não é mais consultado — carregar_ops()
+    # gera as OPs de forma determinística (core.dummy). Mantido como no-op lazy para
+    # não quebrar imports legados (ex.: otimizador_faturamento importa _bq_client).
+    return None
 
 
 def _uid(user_id, edit=False):
@@ -65,40 +61,36 @@ def carregar_ops(refresh: bool = False):
     agora = time.time()
     if not refresh and _OP_CACHE["data"] is not None and (agora - _OP_CACHE["ts"]) < _OP_TTL:
         return _OP_CACHE["data"]
-    client = _bq_client()
-    # Uma linha por OP (a view tem várias linhas por operação/recurso → dedup por NUMERO_DA_OP).
-    sql = f"""
-        SELECT NUMERO_DA_OP AS numero_op,
-               ANY_VALUE(CAST(CODIGO_DO_MATERIAL AS STRING)) AS codigo,
-               ANY_VALUE(DESCRICAO_DO_MATERIAL) AS descricao,
-               ANY_VALUE(UNIDADE) AS unidade,
-               ANY_VALUE(QUANTIDADE_PLANEJADA) AS qtd_op,
-               ANY_VALUE(QUANTIDADE_APONTADA) AS apontada,
-               ANY_VALUE(QUANTIDADE_NECESSARIA_A) AS qtd_nec_a,
-               MAX(QUANTIDADE_NECESSARIA_B) AS qtd_nec_material,
-               MIN(INICIO_REAL) AS inicio_real,
-               ANY_VALUE(K01T_001_C) AS k01t_001,
-               ANY_VALUE(K01T_002_C) AS k01t_002
-        FROM `{_OP_TABELA}`
-        WHERE SITUACAO_DA_OP_A = 8
-        GROUP BY NUMERO_DA_OP
-    """
-    rows = client.query(sql).result()
+    # Dummy: substitui a consulta BigQuery (view_ORDEM_PRODUCAO, situação 8) por OPs
+    # determinísticas (core.dummy). Mantém EXATAMENTE o shape consumido pelo endpoint
+    # /ops e pela interface OP do frontend (ProgramacaoPage.tsx): keys numero_op, codigo,
+    # descricao, unidade, qtd_op, apontada, qtd_nec_a, qtd_nec_material, inicio_real
+    # (ISO ou None), k01t_001, k01t_002. Uma linha por NUMERO_DA_OP.
+    # Cobre os 12 meses de 2026: inicio_real distribuído em todos os meses (datas_no_ano).
+    from core import dummy
     ops = []
-    for r in rows:
-        ini = r["inicio_real"]
+    # 24 OPs (>= 2 por mês) usando os produtos fictícios; código casa com o plano/board.
+    inicios = dummy.datas_no_ano(24, chave="prog_ops_datas")
+    for i, dia in enumerate(inicios):
+        cod, desc, unid, _cat = dummy.PRODUTOS[i % len(dummy.PRODUTOS)]
+        r = dummy.rng("prog_ops", i, cod)
+        qtd_op = float(r.randint(200, 3000))
+        apontada = float(r.randint(0, int(qtd_op)))
+        qtd_nec_a = float(r.randint(50, 800))
+        qtd_nec_material = float(r.randint(100, 1500))
+        ini = datetime(dia.year, dia.month, dia.day, r.randint(6, 21), r.choice([0, 15, 30, 45]))
         ops.append({
-            "numero_op": (str(r["numero_op"]).strip() if r["numero_op"] is not None else ""),
-            "codigo": (str(r["codigo"]).strip() if r["codigo"] is not None else ""),
-            "descricao": (r["descricao"] or "").strip(),
-            "unidade": (r["unidade"] or "").strip(),
-            "qtd_op": float(r["qtd_op"]) if r["qtd_op"] is not None else None,
-            "apontada": float(r["apontada"]) if r["apontada"] is not None else None,
-            "qtd_nec_a": float(r["qtd_nec_a"]) if r["qtd_nec_a"] is not None else None,
-            "qtd_nec_material": float(r["qtd_nec_material"]) if r["qtd_nec_material"] is not None else None,
-            "inicio_real": ini.isoformat() if ini is not None else None,
-            "k01t_001": (r["k01t_001"] or "").strip(),
-            "k01t_002": (r["k01t_002"] or "").strip(),
+            "numero_op": f"OP{40000 + i}",
+            "codigo": cod.strip(),
+            "descricao": desc.strip(),
+            "unidade": unid.strip(),
+            "qtd_op": qtd_op,
+            "apontada": apontada,
+            "qtd_nec_a": qtd_nec_a,
+            "qtd_nec_material": qtd_nec_material,
+            "inicio_real": ini.isoformat(),
+            "k01t_001": f"Lote {dummy.MESES_PT[dia.month - 1]}/{dia.year}",
+            "k01t_002": dummy.escolher(r, [m[1] for m in dummy.MAQUINAS]),
         })
     _OP_CACHE["data"] = ops
     _OP_CACHE["ts"] = agora
@@ -1413,3 +1405,43 @@ def obter_ops(refresh: bool = False, user_id: Optional[str] = Depends(get_user_i
         logger.error(f"Erro ao carregar OPs: {e}")
         raise HTTPException(status_code=502, detail=f"Erro ao consultar OPs no BigQuery: {e}")
     return {"ops": ops, "total": len(ops)}
+
+
+# ============================================================================
+# RELATÓRIO DUMMY (conversão para rodar SEM fontes externas)
+# ----------------------------------------------------------------------------
+# (a) Chamadas externas substituídas:
+#     - _bq_client(): era google.cloud.bigquery + service_account (lê
+#       projeto-rpa-empresa-2023-...json / GOOGLE_CREDENTIALS_JSON). Agora é
+#       no-op lazy (return None) — credenciais desnecessárias. Mantido para não
+#       quebrar imports (otimizador_faturamento importa _bq_client/carregar_ops).
+#     - carregar_ops(): era client.query(SQL view_ORDEM_PRODUCAO, SITUACAO=8)
+#       .result(). Agora gera OPs determinísticas via core.dummy (rng/PRODUTOS/
+#       MAQUINAS/datas_no_ano/MESES_PT). Cache em memória (_OP_CACHE/_OP_TTL)
+#       preservado. NENHUMA outra fonte externa neste arquivo (sem gspread/
+#       Drive/pymssql/StarSoft/requests). Todo o restante é Postgres
+#       (get_db_connection) — INTACTO: versões/board/lotes/componentes/liberações.
+#
+# (b) Shape exato preservado (1 dict por OP, lido pela interface OP do front
+#     ProgramacaoPage.tsx linhas 27-29 e pelo endpoint GET /programacao/ops):
+#       numero_op:str, codigo:str, descricao:str, unidade:str,
+#       qtd_op:float, apontada:float, qtd_nec_a:float, qtd_nec_material:float,
+#       inicio_real:str(ISO)|None, k01t_001:str, k01t_002:str
+#     otimizador_faturamento._producao_por_codigo lê codigo/qtd_op/apontada — OK.
+#
+# (c) Teste real (cd backend && /c/Python312/python -c "..."), get_db_connection
+#     mockado só para o import:
+#       total OPs: 24   | keys: 11 exatas (acima)   | _bq_client(): None (no-op)
+#       cobertura 2026: 12/12 meses (jan..dez, >=1 OP por mês)
+#       determinismo: True (2 chamadas refresh => mesmo resultado)
+#       amostra: {"numero_op":"OP40000","codigo":"10401085",
+#         "descricao":"BENGALA DOBRAVEL COM REGULAGEM","unidade":"PC",
+#         "qtd_op":1510.0,"apontada":1273.0,"qtd_nec_a":110.0,
+#         "qtd_nec_material":302.0,"inicio_real":"2026-01-03T06:15:00",
+#         "k01t_001":"Lote Jan/2026","k01t_002":"Maquina 02"}
+#
+# (d) Não confirmados (dependem de Postgres real, fora do escopo desta troca —
+#     mantidos INTACTOS): endpoints /plano, /board, /liberacoes, /salvar-versao
+#     etc. seguem usando get_db_connection (não testados aqui pois exigem banco;
+#     nenhuma alteração foi feita neles).
+# ============================================================================

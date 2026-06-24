@@ -1,6 +1,47 @@
 """
 SAC — Módulo de Atendimento ao Cliente
 Endpoints para gestão de chamados externos e internos.
+
+─────────────────────────────────────────────────────────────────────────────
+ RELATÓRIO — Conversão para modo DUMMY (sem fontes externas)
+─────────────────────────────────────────────────────────────────────────────
+(a) Externas substituídas (todas eram BigQuery; nenhum gspread/Drive/StarSoft/requests aqui):
+    1. _refresh_produtos_cache()  — antes: BigQuery `VENDAS.view_info_ie` (codigo/descricao).
+       Agora: gera produtos de dummy.PRODUTOS. Mantém cache em disco + agendamento 24h intactos.
+    2. _bq_client()               — antes: monta credenciais SA + cliente BigQuery.
+       Agora: no-op lazy (raise) — os únicos chamadores foram reescritos para dummy.
+    3. buscar_nota_fiscal (GET /sac/nota/{numero_nf}) — antes: BigQuery
+       `VENDAS.Controle_de_logistica_carteira`. Agora: _dummy_doc determinístico.
+    4. buscar_por_pedido  (GET /sac/pedido/{numero_pedido}) — idem item 3.
+    OBS: TODO o Postgres (sac_tickets/comentarios/anexos/clientes_externos, CRUD,
+    dashboards /sac/dashboard/*) foi mantido INTACTO — não é fonte externa.
+
+(b) Shape exato preservado:
+    - /sac/produto       -> [{ "codigo": str, "descricao": str }]   (SacProdutoLookup.tsx)
+    - /sac/nota, /sac/pedido (via _fmt_rows / _dummy_doc), consumido por SacNewTicket.tsx:
+      { found: true, pedido, numero_nf, cnpj_cpf, razao_social, emissao, entrega,
+        nota_fiscal_emissao, desc_tipodocumento, descricao_segmento,
+        produtos: [{ codigo_produto, descricao_produto, quantidade }] }
+      ou { found: false } quando entrada inválida (mantém UX "notfound").
+
+(c) Teste real (cd backend && /c/Python312/python ...), get_db_connection não usado pelas
+    funções trocadas (BQ era stateless). Saída comprovada:
+      SAC cache: 12 produtos carregados (dummy)
+      /produto q=BENGALA -> [{'codigo':'10401085','descricao':'BENGALA DOBRAVEL COM REGULAGEM'}]
+      /nota 15542  -> found True, emissao 2026-04-09, entrega 2026-04-23, 1 produto
+      /nota 15542/4 normaliza p/ 15542 (mesmo doc)
+      /nota 77001  -> emissao 2026-09-27 (Bonificacao)
+      meses de emissao cobertos (amostra NF):  2026-01,03,04,05,07,09,10
+      meses cobertos (amostra pedidos):        2026-01,02,03,04,07,08,09,12
+      /nota 'abc' -> {'found': False};  determinístico: True
+
+(d) Não confirmados / observações:
+    - Cobertura mensal de 2026 nos DASHBOARDS (/sac/dashboard/*) depende do SEED do
+      Postgres (tabela sac_tickets), NÃO deste arquivo. Estes endpoints continuam lendo o
+      banco real do app — não foram tocados (não são fontes externas).
+    - _dummy_doc espalha emissão por 2026 via hash do número; uma única NF cai em um mês,
+      mas o conjunto de NFs/pedidos cobre jan–dez.
+─────────────────────────────────────────────────────────────────────────────
 """
 
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Header, BackgroundTasks, Depends
@@ -14,6 +55,7 @@ import json
 
 from db_utils import get_db_connection
 from permission_utils import check_module_permission
+from core import dummy
 from pathlib import Path
 from core.config import UPLOAD_DIR, FRONTEND_URL, get_password_hash
 from core.email import send_email, notify_user
@@ -183,41 +225,16 @@ def _refresh_produtos_cache():
     """Carrega produtos do BigQuery e salva em cache JSON."""
     global _produtos_cache
     try:
-        from google.cloud import bigquery
-        from google.oauth2 import service_account
-
-        sa_json = os.environ.get("GOOGLE_SA_JSON") or os.environ.get("GOOGLE_CREDENTIALS_JSON", "")
-        if sa_json:
-            import json as _json
-            sa_info = _json.loads(sa_json)
-            credentials = service_account.Credentials.from_service_account_info(
-                sa_info,
-                scopes=["https://www.googleapis.com/auth/bigquery"],
-            )
-        else:
-            key_path = os.path.normpath(_BQ_KEY_FILE)
-            credentials = service_account.Credentials.from_service_account_file(
-                key_path,
-                scopes=["https://www.googleapis.com/auth/bigquery"],
-            )
-        client = bigquery.Client(credentials=credentials, project="projeto-rpa-empresa-2023")
-        query = f"""
-            SELECT
-                TRIM(CAST(codigo_do_item AS STRING)) AS codigo,
-                TRIM(descricao_item) AS descricao
-            FROM `{_BQ_TABLE}`
-            WHERE codigo_do_item IS NOT NULL AND descricao_item IS NOT NULL
-            ORDER BY codigo_do_item
-        """
-        rows = [{"codigo": row.codigo, "descricao": row.descricao} for row in client.query(query).result()]
+        # DUMMY: sem BigQuery — produtos determinísticos a partir do pool fictício.
+        rows = [{"codigo": cod, "descricao": desc} for (cod, desc, _un, _cat) in dummy.PRODUTOS]
         with _cache_lock:
             _produtos_cache = rows
         cache_path = os.path.normpath(_SAC_CACHE_FILE)
         with open(cache_path, "w", encoding="utf-8") as f:
             json.dump({"updated_at": datetime.now().isoformat(), "produtos": rows}, f, ensure_ascii=False)
-        print(f"SAC cache: {len(rows)} produtos carregados do BigQuery.")
+        print(f"SAC cache: {len(rows)} produtos carregados (dummy).")
     except Exception as e:
-        print(f"SAC cache BigQuery error: {e}")
+        print(f"SAC cache dummy error: {e}")
     _schedule_next_refresh()
 
 
@@ -319,16 +336,9 @@ def deletar_tipo_problema(tipo_id: int, user_id: str = Header(...)):
 
 
 def _bq_client():
-    import json as _json
-    from google.cloud import bigquery
-    from google.oauth2 import service_account
-    sa_json = os.environ.get("GOOGLE_SA_JSON") or os.environ.get("GOOGLE_CREDENTIALS_JSON", "")
-    sa_info = _json.loads(sa_json)
-    credentials = service_account.Credentials.from_service_account_info(
-        sa_info, scopes=["https://www.googleapis.com/auth/bigquery"]
-    )
-    from google.cloud import bigquery as bq
-    return bq.Client(credentials=credentials, project="projeto-rpa-empresa-2023")
+    # DUMMY: cliente BigQuery desativado (lazy/no-op). Os endpoints que dependiam
+    # do BigQuery (buscar_nota_fiscal / buscar_por_pedido) agora geram dados dummy.
+    raise RuntimeError("BigQuery desativado no modo dummy")
 
 def _fmt_rows(rows):
     def fmt_date(v): return v.isoformat() if v else None
@@ -358,32 +368,55 @@ _BQ_SELECT = """
     WHERE NOTA_FISCAL IS NOT NULL AND NOTA_FISCAL != ''
 """
 
+
+def _dummy_doc(chave: str, numero_nf=None, pedido=None) -> dict:
+    """
+    DUMMY: monta um documento (NF/pedido) determinístico no MESMO shape de _fmt_rows.
+    Datas de emissão/entrega caem dentro de 2026 (cobertura anual via dummy).
+    """
+    r = dummy.rng("sac_doc", chave)
+    # Mês distribuído ao longo de 2026 para garantir cobertura de jan–dez.
+    mes = (abs(hash(str(chave))) % 12) + 1
+    emissao = dummy.dia_aleatorio(dummy.ANO_BASE, mes, r)
+    entrega = emissao + timedelta(days=r.randint(2, 15))
+    cli = dummy.escolher(r, dummy.CLIENTES)
+    cnpj = f"{r.randint(10,99)}.{r.randint(100,999)}.{r.randint(100,999)}/0001-{r.randint(10,99)}"
+    nf_num = numero_nf if numero_nf else str(r.randint(10000, 99999))
+    ped = pedido if pedido else f"MBK-{r.randint(100,999):04d}"
+    n_prod = r.randint(1, 3)
+    prods = r.sample(dummy.PRODUTOS, min(n_prod, len(dummy.PRODUTOS)))
+    produtos = [
+        {"codigo_produto": cod, "descricao_produto": desc, "quantidade": r.randint(1, 10)}
+        for (cod, desc, _un, _cat) in prods
+    ]
+    return {
+        "found": True,
+        "pedido": ped,
+        "numero_nf": str(nf_num),
+        "cnpj_cpf": cnpj,
+        "razao_social": cli,
+        "emissao": emissao.isoformat(),
+        "entrega": entrega.isoformat(),
+        "nota_fiscal_emissao": emissao.isoformat(),
+        "desc_tipodocumento": dummy.escolher(r, ["Venda", "Bonificacao", "Remessa"]),
+        "descricao_segmento": dummy.escolher(r, ["Atacado", "Varejo", "Hospitalar", "Distribuidor"]),
+        "produtos": produtos,
+    }
+
+
 @router.get("/nota/{numero_nf}")
 def buscar_nota_fiscal(numero_nf: str, user_id: Optional[str] = Depends(get_user_id_from_session)):
     """Busca NF no BigQuery — suporta formatos: 123456, 15542/4, 15542 4."""
     if not user_id or not check_module_permission(user_id, "sac"):
         raise HTTPException(status_code=403, detail="Acesso negado")
     try:
-        from google.cloud import bigquery
-        client = _bq_client()
         nf = numero_nf.strip()
         # Normaliza: "15542/4" → tenta com barra, sem barra e só a parte numérica
         nf_base = nf.split('/')[0].split(' ')[0].strip()
-        query = _BQ_SELECT + """
-          AND (
-            TRIM(CAST(NOTA_FISCAL AS STRING)) = @nf
-            OR TRIM(CAST(NOTA_FISCAL AS STRING)) = @nf_base
-            OR REGEXP_REPLACE(TRIM(CAST(NOTA_FISCAL AS STRING)), r'[/ ].*', '') = @nf_base
-          )
-        """
-        job_config = bigquery.QueryJobConfig(query_parameters=[
-            bigquery.ScalarQueryParameter("nf", "STRING", nf),
-            bigquery.ScalarQueryParameter("nf_base", "STRING", nf_base),
-        ])
-        rows = list(client.query(query, job_config=job_config).result())
-        if not rows:
+        # DUMMY: sem BigQuery — só a parte numérica define o documento.
+        if not nf_base or not nf_base.isdigit():
             return {"found": False}
-        return _fmt_rows(rows)
+        return _dummy_doc(f"nf:{nf_base}", numero_nf=nf_base)
     except Exception as e:
         print(f"buscar_nota_fiscal error: {e}")
         return {"found": False, "error": str(e)}
@@ -395,19 +428,11 @@ def buscar_por_pedido(numero_pedido: str, user_id: Optional[str] = Depends(get_u
     if not user_id or not check_module_permission(user_id, "sac"):
         raise HTTPException(status_code=403, detail="Acesso negado")
     try:
-        from google.cloud import bigquery
-        client = _bq_client()
-        query = _BQ_SELECT.replace(
-            "WHERE NOTA_FISCAL IS NOT NULL AND NOTA_FISCAL != ''",
-            "WHERE PEDIDO IS NOT NULL AND PEDIDO != ''"
-        ) + " AND TRIM(UPPER(CAST(PEDIDO AS STRING))) = @pedido"
-        job_config = bigquery.QueryJobConfig(query_parameters=[
-            bigquery.ScalarQueryParameter("pedido", "STRING", numero_pedido.strip().upper()),
-        ])
-        rows = list(client.query(query, job_config=job_config).result())
-        if not rows:
+        ped = numero_pedido.strip().upper()
+        # DUMMY: sem BigQuery — qualquer pedido não-vazio gera um documento determinístico.
+        if not ped:
             return {"found": False}
-        return _fmt_rows(rows)
+        return _dummy_doc(f"pedido:{ped}", pedido=ped)
     except Exception as e:
         print(f"buscar_por_pedido error: {e}")
         return {"found": False, "error": str(e)}

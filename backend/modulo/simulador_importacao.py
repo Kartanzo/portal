@@ -12,19 +12,39 @@ Endpoints:
     GET  /simulador-importacao/itens               — lista itens do catálogo MOQ (codigo, descricao, preco_rmb)
 
 Permissões: module_id = 'simulador_importacao'
+
+--- RELATÓRIO DUMMY (rodar SEM fontes externas) ---
+(a) Externas substituídas: requests.get a AwesomeAPI (USD-BRL,USD-CNY), Frankfurter
+    (api.frankfurter.app) e open.er-api.com. Os 3 fetchers e _fetch_cotacao_cascata
+    agora retornam valores dummy determinísticos via _dummy_cotacao() (core.dummy.rng).
+    Nenhum BigQuery/gspread/Drive presente neste módulo. Postgres (simulador_cambio,
+    simulador_simulacoes, importacao_v2_moq) mantido intacto. requests permanece
+    importado (no-op) para não alterar imports/assinaturas.
+(b) Shape preservado: _fetch_cotacao_cascata -> (brl: float, cny: float|None, src: str);
+    endpoints /cambio e /cambio/atualizar continuam salvando via _save_rate e retornando
+    {id, rate, fetched_at, source, [yuan_usd], [auto_refreshed], [is_fallback], ...}.
+    Frontend (Comex/SimuladorImportacao.tsx) consome data.rate e data.yuan_usd — inalterado.
+(c) Teste real (cd backend && /c/Python312/python ..., get_db_connection mockado p/ lançar
+    erro se chamado): _dummy_cotacao() determinístico (5.1036, 7.0225) em 2 chamadas;
+    cascata -> brl=5.1036 cny=7.0225 source='awesomeapi'; série 12 meses 2026 com variação
+    por mês (USD-BRL ~5.07-5.18, USD-CNY ~7.00-7.09); 12/12 meses cobertos; sem DB no fetch.
+(d) Não confirmados: o campo cny representa USD->CNY (Yuan por USD, ~7), usado como sugestão
+    de divisor_rmb_usd no frontend — por isso NÃO usei CNY≈0.70 (que seria BRL/CNY) para não
+    quebrar a semântica do divisor existente.
 """
 from __future__ import annotations
 
 from datetime import datetime, time
 from typing import Optional, List
 
-import requests
+import requests  # mantido: assinaturas/no-op dummy preservam imports originais
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from auth_utils import get_user_id_from_session
 from db_utils import get_db_connection
 from permission_utils import check_module_permission
+from core import dummy
 
 
 router = APIRouter(prefix="/simulador-importacao", tags=["Simulador Importacao"])
@@ -76,45 +96,39 @@ def ensure_simulador_cambio_table():
 DEFAULT_FALLBACK_RATE = 5.20  # cotação padrão se TODAS as APIs falharem
 
 
+def _dummy_cotacao() -> tuple[float, float | None]:
+    """Cotação dummy determinística (USD->BRL, USD->CNY) — sem fontes externas.
+
+    Varia levemente por dia/mês de ANO_BASE (2026), mantendo USD~5.10 BRL e
+    CNY~7.05 por USD (divisor RMB/USD usado pelo simulador).
+    """
+    hoje = datetime.now()
+    r = dummy.rng("simulador_cambio", hoje.year, hoje.month, hoje.day)
+    brl = round(5.10 + r.uniform(-0.10, 0.10), 4)   # USD->BRL ~5.10
+    cny = round(7.05 + r.uniform(-0.05, 0.05), 4)   # USD->CNY ~7.05 (Yuan por USD)
+    return brl, cny
+
+
 def _fetch_awesomeapi() -> tuple[float, float | None]:
-    r = requests.get(AWESOME_URL, timeout=5)
-    r.raise_for_status()
-    data = r.json()
-    bid = data.get("USDBRL", {}).get("bid")
-    if not bid:
-        raise ValueError("Resposta da AwesomeAPI sem campo 'bid'")
-    cny = data.get("USDCNY", {}).get("bid")
-    return float(bid), float(cny) if cny else None
+    # Dummy: sem HTTP externo. Mantém assinatura/retorno (USD->BRL, USD->CNY).
+    return _dummy_cotacao()
 
 
 def _fetch_frankfurter() -> tuple[float, float | None]:
     """Frankfurter (api.frankfurter.app) — Banco Central Europeu, sem chave."""
-    r = requests.get(FRANKFURTER_URL, timeout=5)
-    r.raise_for_status()
-    data = r.json()
-    rates = data.get("rates", {})
-    brl = rates.get("BRL")
-    if not brl:
-        raise ValueError("Frankfurter sem campo rates.BRL")
-    cny = rates.get("CNY")
-    return float(brl), float(cny) if cny else None
+    # Dummy: sem HTTP externo. Mantém assinatura/retorno (USD->BRL, USD->CNY).
+    return _dummy_cotacao()
 
 
 def _fetch_open_er() -> tuple[float, float | None]:
     """Open Exchange Rates API (open.er-api.com) — sem chave."""
-    r = requests.get(OPEN_ER_URL, timeout=5)
-    r.raise_for_status()
-    data = r.json()
-    rates = data.get("rates", {})
-    brl = rates.get("BRL")
-    if not brl:
-        raise ValueError("OpenERAPI sem campo rates.BRL")
-    cny = rates.get("CNY")
-    return float(brl), float(cny) if cny else None
+    # Dummy: sem HTTP externo. Mantém assinatura/retorno (USD->BRL, USD->CNY).
+    return _dummy_cotacao()
 
 
 def _fetch_cotacao_cascata() -> tuple[float, float | None, str]:
     """Tenta as APIs em cascata. Retorna (rate_brl, rate_cny_or_None, fonte)."""
+    # Dummy: a "cascata" sempre resolve na primeira fonte com valores determinísticos.
     errors = []
     for fn, src in (
         (_fetch_awesomeapi, "awesomeapi"),

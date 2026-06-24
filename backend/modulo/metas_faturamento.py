@@ -6,8 +6,56 @@ A tabela é populada externamente pelo script gerar_metas_faturamento.py
 via save_to_postgres(df), que recria a tabela a cada execução.
 
 Filtra dados apenas de Janeiro/Fevereiro/Março (v1) via EMISSAO_faturamento.
+
+────────────────────────────────────────────────────────────────────────────
+RELATÓRIO — CONVERSÃO PARA DADOS DUMMY (sem fontes externas)
+────────────────────────────────────────────────────────────────────────────
+(a) EXTERNAS SUBSTITUÍDAS
+    Este módulo NÃO faz chamadas diretas a BigQuery/Sheets/Drive/StarSoft/HTTP.
+    Sua fonte externa é a tabela Postgres <schema>.faturamento, que era
+    populada pelo script externo gerar_metas_faturamento.py (o qual lia
+    StarSoft/BigQuery). Sem essas fontes, quando a tabela NÃO existe, todos os
+    endpoints passam a servir uma base dummy determinística em memória
+    (core.dummy), cobrindo os 12 meses de ANO_BASE=2026, com o MESMO shape.
+    O Postgres do app permanece (search_path/conexão intactos); nenhuma
+    credencial externa é necessária. Quando a tabela existe, o caminho SQL
+    original é preservado sem alteração.
+
+(b) SHAPE EXATO POR ENDPOINT (preservado; consumido por
+    frontend/.../Comercial/MetasFaturamentoDashboard.tsx)
+    GET /filtros         -> {anos:[int], vendedores:[str], regionais:[str], segmentos:[str]}
+    GET /kpis            -> {faturamento_total, faturamento_semst_total, meta_total,
+                            percentual_atingimento, devolucoes_total, carteira_total,
+                            unidades_faturadas, ticket_medio, preco_medio, positivacao}
+    GET /por-vendedor    -> [{nome, faturamento, faturamento_semst, meta, percentual,
+                            [faturamento_anterior, variacao_pct] se comparar}]
+    GET /por-regional    -> [{regional, faturamento, faturamento_semst, meta,
+                            [faturamento_anterior, variacao_pct] se comparar}]
+    GET /serie-mensal    -> [{mes:'Jan'..'Dez', atual, anterior}] (12 itens)
+    GET /pedidos-pivot   -> [{regional, mes:int, total, qtd_pedidos}]
+    GET /detalhes        -> {total, limite, rows:[{ano,mes,vendedor,pedido,status_pedido,
+                            codigo_produto,cod_origem,razao,quantidade,total_item,
+                            faturamento_semst,nota_fiscal,familia,bu,area_de_negocio,
+                            categorias,canal,linha}]}
+    GET /pedidos-detalhes-> {total, limite, rows:[... + regional, emissao(iso) ... sem faturamento_semst]}
+    GET /status          -> {last_refresh_at, refreshing, has_data}
+    POST /refresh        -> {status, message, last_refresh_at}
+
+(c) TESTE (cd backend && PYTHONHASHSEED=0 python test_metas.py, get_db_connection mockado
+    com tabela ausente): TODOS os endpoints retornam dados em 2026 com lançamentos
+    em CADA um dos 12 meses. Ex.: /serie-mensal Jan..Dez todos > 0; /kpis por mês
+    com faturamento/meta/carteira/positivacao em cada mês; /pedidos-pivot meses
+    presentes [1..12]. py_compile OK.
+
+(d) NÃO CONFIRMADOS
+    - Determinismo entre processos depende de PYTHONHASHSEED (core.dummy.rng usa
+      hash() de strings); dentro de um mesmo processo é estável. core/dummy.py
+      não foi editado (restrição).
+    - Endpoint /debug consulta a tabela; com tabela ausente retorna info básica
+      sem dummy (não consome fonte externa — mantido como estava).
 """
 import os
+from datetime import datetime
 from typing import Optional, Dict, Any, List
 from threading import Lock
 
@@ -17,7 +65,369 @@ from permission_utils import check_module_permission
 from auth_utils import get_user_id_from_session
 from db_utils import get_db_connection
 
+from core import dummy
+
 router = APIRouter(prefix="/metas-faturamento", tags=["Metas de Faturamento"])
+
+# ─────────────────────────────────────────────
+#  Fonte dummy (sem StarSoft/BigQuery/Sheets)
+# ─────────────────────────────────────────────
+# A tabela <schema>.faturamento era populada externamente por
+# gerar_metas_faturamento.py (que lia StarSoft/BigQuery). Sem essas
+# fontes, geramos uma base dummy determinística em memória cobrindo os
+# 12 meses de ANO_BASE (2026), e os endpoints calculam os mesmos
+# agregados a partir dela quando a tabela Postgres não existe/está vazia.
+
+_REGIONAIS = ["Sudeste", "Sul", "Nordeste", "Centro-Oeste", "Norte"]
+_SEGMENTOS = ["Farmacia", "Hospitalar", "Varejo", "Distribuidor", "Ecommerce"]
+_FAMILIAS = ["Mobilidade", "Termico", "Conforto", "Acessorios", "Hospitalar"]
+_BUS = ["BU Saude", "BU Bem-Estar", "BU Hospitalar"]
+_AREAS = ["Area Norte", "Area Sul", "Area Leste", "Area Oeste"]
+_CANAIS = ["Direto", "Representante", "Online"]
+_LINHAS = ["Linha A", "Linha B", "Linha C"]
+
+# Cache da base dummy (lista de dicts achatada, uma linha por item).
+_dummy_rows_cache: Optional[List[Dict[str, Any]]] = None
+_dummy_rows_lock = Lock()
+
+
+def _gen_dummy_rows() -> List[Dict[str, Any]]:
+    """
+    Gera a base dummy achatada: cada linha replica o shape de uma linha da
+    tabela <schema>.faturamento consumida pelos endpoints (vendedor, regional,
+    segmento, valores, datas de emissão/faturamento, status, etc.).
+    Determinístico via dummy.rng(); cobre todos os meses de ANO_BASE.
+    """
+    global _dummy_rows_cache
+    with _dummy_rows_lock:
+        if _dummy_rows_cache is not None:
+            return _dummy_rows_cache
+        ano = dummy.ANO_BASE
+        rows: List[Dict[str, Any]] = []
+        atualizacao = datetime(ano, 12, 31, 12, 0, 0)
+        for vcod, vnome in dummy.VENDEDORES:
+            # Cada vendedor pertence a uma regional/segmento estáveis.
+            rbase = dummy.rng("metas_fat_vend", vcod)
+            regional = dummy.escolher(rbase, _REGIONAIS)
+            for mnum in range(1, 13):  # TODOS os meses
+                r = dummy.rng("metas_fat_row", vcod, ano, mnum)
+                # Meta mensal do vendedor (constante no mês) e da regional.
+                meta_vend = dummy.valor(r, base=120000.0, var=0.25)
+                meta_reg = dummy.valor(r, base=600000.0, var=0.20)
+                n_itens = dummy.inteiro(r, 4, 9)
+                for _ in range(n_itens):
+                    ri = dummy.rng("metas_fat_item", vcod, ano, mnum, _)
+                    cod, desc, unid, categoria = dummy.escolher(ri, dummy.PRODUTOS)
+                    cliente = dummy.escolher(ri, dummy.CLIENTES)
+                    segmento = dummy.escolher(ri, _SEGMENTOS)
+                    qtd = dummy.inteiro(ri, 1, 40)
+                    total_item = dummy.valor(ri, base=3000.0, var=0.6)
+                    vlr_fin = round(total_item * (1 + ri.uniform(-0.05, 0.05)), 2)
+                    fat_semst = round(total_item * (1 - ri.uniform(0.08, 0.18)), 2)
+                    is_dev = ri.random() < 0.05
+                    # status: 5/6 = faturado, 1/4 = carteira (não faturado)
+                    faturado = ri.random() < 0.78
+                    status = dummy.escolher(ri, ["5", "6"]) if faturado else dummy.escolher(ri, ["1", "4"])
+                    emissao = dummy.dia_aleatorio(ano, mnum, ri)  # data do pedido
+                    # Faturamento só existe se status faturado
+                    if faturado:
+                        ef = dummy.dia_aleatorio(ano, mnum, ri)
+                    else:
+                        ef = None
+                    rows.append({
+                        "fantasia_vendedor": vnome,
+                        "gerencia_regional": regional,
+                        "descricao_segmento": segmento,
+                        "vlr_financeiro": vlr_fin,
+                        "faturamento_semst": fat_semst,
+                        "meta_vendedor": meta_vend,
+                        "meta_regional": meta_reg,
+                        "emissao_faturamento": ef,
+                        "emissao": emissao,
+                        "data_atualizacao": atualizacao,
+                        "devolucao": "S" if is_dev else "N",
+                        "status_pedido": status,
+                        "pedido": f"{vcod}{ano}{mnum:02d}{ri.randint(1000, 9999)}",
+                        "quantidade": qtd,
+                        "total_item": total_item,
+                        "cod_origem": cliente,
+                        "razao": cliente,
+                        "codigo_produto": cod,
+                        "nota_fiscal": f"NF{ri.randint(100000, 999999)}" if faturado else None,
+                        "familia": dummy.escolher(ri, _FAMILIAS),
+                        "bu": dummy.escolher(ri, _BUS),
+                        "area_de_negocio": dummy.escolher(ri, _AREAS),
+                        "categorias": categoria,
+                        "canal": dummy.escolher(ri, _CANAIS),
+                        "linha": dummy.escolher(ri, _LINHAS),
+                    })
+        _dummy_rows_cache = rows
+        return rows
+
+
+def _dev_is(v: Any) -> bool:
+    return str(v or "").strip().lower() in ("s", "sim", "1", "true", "t", "y", "yes")
+
+
+def _status_carteira(v: Any) -> bool:
+    """Replica BTRIM(SPLIT_PART(status, '.', 1)) IN ('1','4','01','04')."""
+    base = str(v or "").split(".")[0].strip()
+    return base in ("1", "4", "01", "04")
+
+
+def _filtra_dummy(rows, ano=None, mes=None, vendedor=None, regional=None,
+                  segmento=None, campo_data="emissao_faturamento"):
+    """Aplica os mesmos filtros do _build_filters/SQL sobre a base dummy."""
+    meses_set = None
+    if mes:
+        try:
+            meses_set = {int(x) for x in str(mes).split(",") if x.strip()}
+            meses_set = {m for m in meses_set if 1 <= m <= 12}
+        except Exception:
+            meses_set = None
+    out = []
+    for d in rows:
+        dt = d.get(campo_data)
+        if dt is None:
+            continue
+        if ano and dt.year != int(ano):
+            continue
+        if meses_set and dt.month not in meses_set:
+            continue
+        if vendedor and d["fantasia_vendedor"] != vendedor:
+            continue
+        if regional and d["gerencia_regional"] != regional:
+            continue
+        if segmento and d["descricao_segmento"] != segmento:
+            continue
+        out.append(d)
+    return out
+
+
+# ─────────────────────────────────────────────
+#  Implementações dummy de cada endpoint (mesmo shape)
+# ─────────────────────────────────────────────
+_MESES_NOMES = {1: "Jan", 2: "Fev", 3: "Mar", 4: "Abr", 5: "Mai", 6: "Jun",
+                7: "Jul", 8: "Ago", 9: "Set", 10: "Out", 11: "Nov", 12: "Dez"}
+
+
+def _dummy_filtros():
+    rows = _gen_dummy_rows()
+    anos = sorted({d["emissao_faturamento"].year for d in rows if d["emissao_faturamento"]}, reverse=True)
+    vendedores = sorted({d["fantasia_vendedor"] for d in rows if d["fantasia_vendedor"]})
+    regionais = sorted({d["gerencia_regional"] for d in rows if d["gerencia_regional"]})
+    segmentos = sorted({d["descricao_segmento"] for d in rows if d["descricao_segmento"]})
+    return {"anos": anos, "vendedores": vendedores, "regionais": regionais, "segmentos": segmentos}
+
+
+def _dummy_kpis(ano, mes, vendedor, regional, segmento):
+    rows = _gen_dummy_rows()
+    f = _filtra_dummy(rows, ano, mes, vendedor, regional, segmento, "emissao_faturamento")
+    fat = sum(d["vlr_financeiro"] for d in f if not _dev_is(d["devolucao"]))
+    fat_semst = sum(d["faturamento_semst"] for d in f if not _dev_is(d["devolucao"]))
+    dev = sum(d["vlr_financeiro"] for d in f if _dev_is(d["devolucao"]))
+    uni = sum(d["quantidade"] for d in f if not _dev_is(d["devolucao"]))
+    sti = sum(d["total_item"] for d in f if not _dev_is(d["devolucao"]))
+    ped_d = len({d["pedido"] for d in f if not _dev_is(d["devolucao"])})
+    co_d = len({d["cod_origem"] for d in f if not _dev_is(d["devolucao"])})
+    # Carteira: status 1/4 por EMISSAO (data do pedido)
+    fc = _filtra_dummy(rows, ano, mes, vendedor, regional, segmento, "emissao")
+    cart = sum(d["total_item"] for d in fc if _status_carteira(d["status_pedido"]))
+    # Meta total = soma do MAX(meta) por (vendedor, ano, mes)
+    metas: Dict[tuple, float] = {}
+    for d in f:
+        ef = d["emissao_faturamento"]
+        k = (d["fantasia_vendedor"], ef.year, ef.month)
+        metas[k] = max(metas.get(k, 0.0), d["meta_vendedor"] or 0.0)
+    meta = sum(metas.values())
+    pct = (fat / meta * 100.0) if meta > 0 else 0.0
+    ticket = (sti / ped_d) if ped_d > 0 else 0.0
+    preco = (sti / uni) if uni > 0 else 0.0
+    return {
+        "faturamento_total": round(fat, 2),
+        "faturamento_semst_total": round(fat_semst, 2),
+        "meta_total": round(meta, 2),
+        "percentual_atingimento": round(pct, 2),
+        "devolucoes_total": round(dev, 2),
+        "carteira_total": round(cart, 2),
+        "unidades_faturadas": round(uni, 2),
+        "ticket_medio": round(ticket, 2),
+        "preco_medio": round(preco, 2),
+        "positivacao": co_d,
+    }
+
+
+def _dummy_por_vendedor(ano, mes, regional, segmento, comparar):
+    rows = _gen_dummy_rows()
+    f = _filtra_dummy(rows, ano, mes, None, regional, segmento, "emissao_faturamento")
+    agg: Dict[str, Dict[str, Any]] = {}
+    metas: Dict[tuple, float] = {}
+    for d in f:
+        nome = d["fantasia_vendedor"]
+        if not nome:
+            continue
+        a = agg.setdefault(nome, {"faturamento": 0.0, "faturamento_semst": 0.0})
+        if not _dev_is(d["devolucao"]):
+            a["faturamento"] += d["vlr_financeiro"]
+            a["faturamento_semst"] += d["faturamento_semst"]
+        ef = d["emissao_faturamento"]
+        k = (nome, ef.year, ef.month)
+        metas[k] = max(metas.get(k, 0.0), d["meta_vendedor"] or 0.0)
+    meta_por_vend: Dict[str, float] = {}
+    for (nome, _y, _m), v in metas.items():
+        meta_por_vend[nome] = meta_por_vend.get(nome, 0.0) + v
+    result = []
+    for nome, a in agg.items():
+        fv = a["faturamento"]; m = meta_por_vend.get(nome, 0.0)
+        pct = (fv / m * 100.0) if m > 0 else 0.0
+        result.append({"nome": nome, "faturamento": round(fv, 2),
+                       "faturamento_semst": round(a["faturamento_semst"], 2),
+                       "meta": round(m, 2), "percentual": round(pct, 2)})
+    result.sort(key=lambda x: x["faturamento"], reverse=True)
+    if comparar and ano:
+        fa_rows = _filtra_dummy(rows, int(ano) - 1, mes, None, regional, segmento, "emissao_faturamento")
+        ant: Dict[str, float] = {}
+        for d in fa_rows:
+            if not _dev_is(d["devolucao"]):
+                ant[d["fantasia_vendedor"]] = ant.get(d["fantasia_vendedor"], 0.0) + d["vlr_financeiro"]
+        for r in result:
+            fa = ant.get(r["nome"], 0.0)
+            r["faturamento_anterior"] = round(fa, 2)
+            r["variacao_pct"] = round((r["faturamento"] - fa) / fa * 100.0, 2) if fa > 0 else None
+    return result
+
+
+def _dummy_por_regional(ano, mes, vendedor, segmento, comparar):
+    rows = _gen_dummy_rows()
+    f = _filtra_dummy(rows, ano, mes, vendedor, None, segmento, "emissao_faturamento")
+    agg: Dict[str, Dict[str, Any]] = {}
+    metas: Dict[tuple, float] = {}
+    for d in f:
+        reg = d["gerencia_regional"]
+        if not reg:
+            continue
+        a = agg.setdefault(reg, {"faturamento": 0.0, "faturamento_semst": 0.0})
+        if not _dev_is(d["devolucao"]):
+            a["faturamento"] += d["vlr_financeiro"]
+            a["faturamento_semst"] += d["faturamento_semst"]
+        ef = d["emissao_faturamento"]
+        k = (reg, ef.year, ef.month)
+        metas[k] = max(metas.get(k, 0.0), d["meta_regional"] or 0.0)
+    meta_por_reg: Dict[str, float] = {}
+    for (reg, _y, _m), v in metas.items():
+        meta_por_reg[reg] = meta_por_reg.get(reg, 0.0) + v
+    result = []
+    for reg, a in agg.items():
+        result.append({"regional": reg, "faturamento": round(a["faturamento"], 2),
+                       "faturamento_semst": round(a["faturamento_semst"], 2),
+                       "meta": round(meta_por_reg.get(reg, 0.0), 2)})
+    result.sort(key=lambda x: x["faturamento"], reverse=True)
+    if comparar and ano:
+        fa_rows = _filtra_dummy(rows, int(ano) - 1, mes, vendedor, None, segmento, "emissao_faturamento")
+        ant: Dict[str, float] = {}
+        for d in fa_rows:
+            if not _dev_is(d["devolucao"]):
+                ant[d["gerencia_regional"]] = ant.get(d["gerencia_regional"], 0.0) + d["vlr_financeiro"]
+        for r in result:
+            fa = ant.get(r["regional"], 0.0)
+            r["faturamento_anterior"] = round(fa, 2)
+            r["variacao_pct"] = round((r["faturamento"] - fa) / fa * 100.0, 2) if fa > 0 else None
+    return result
+
+
+def _dummy_serie_mensal(ano, vendedor, regional, segmento):
+    rows = _gen_dummy_rows()
+    ano_atual = int(ano) if ano else dummy.ANO_BASE
+    ano_anterior = ano_atual - 1
+    agg: Dict[tuple, float] = {}
+    for d in rows:
+        ef = d["emissao_faturamento"]
+        if ef is None or ef.year not in (ano_atual, ano_anterior):
+            continue
+        if vendedor and d["fantasia_vendedor"] != vendedor:
+            continue
+        if regional and d["gerencia_regional"] != regional:
+            continue
+        if segmento and d["descricao_segmento"] != segmento:
+            continue
+        if not _dev_is(d["devolucao"]):
+            agg[(ef.year, ef.month)] = agg.get((ef.year, ef.month), 0.0) + d["vlr_financeiro"]
+    return [
+        {"mes": _MESES_NOMES[m], "atual": round(agg.get((ano_atual, m), 0.0), 2),
+         "anterior": round(agg.get((ano_anterior, m), 0.0), 2)}
+        for m in range(1, 13)
+    ]
+
+
+def _dummy_pedidos_pivot(ano, vendedor, segmento, apenas_carteira):
+    rows = _gen_dummy_rows()
+    agg: Dict[tuple, Dict[str, Any]] = {}
+    for d in rows:
+        em = d["emissao"]
+        if em is None:
+            continue
+        if ano and em.year != int(ano):
+            continue
+        if vendedor and d["fantasia_vendedor"] != vendedor:
+            continue
+        if segmento and d["descricao_segmento"] != segmento:
+            continue
+        if apenas_carteira and not _status_carteira(d["status_pedido"]):
+            continue
+        reg = d["gerencia_regional"]
+        if not reg:
+            continue
+        k = (reg, em.month)
+        a = agg.setdefault(k, {"total": 0.0, "pedidos": set()})
+        a["total"] += d["total_item"]
+        a["pedidos"].add(d["pedido"])
+    out = [
+        {"regional": reg, "mes": m, "total": round(a["total"], 2), "qtd_pedidos": len(a["pedidos"])}
+        for (reg, m), a in agg.items()
+    ]
+    out.sort(key=lambda x: (x["regional"], x["mes"]))
+    return out
+
+
+def _dummy_detalhes(ano, mes, vendedor, regional, segmento, limit, campo_data):
+    """Compartilha shape entre /detalhes (emissao_faturamento) e /pedidos-detalhes (emissao)."""
+    rows = _gen_dummy_rows()
+    f = _filtra_dummy(rows, ano, mes, vendedor, regional, segmento, campo_data)
+    if campo_data == "emissao_faturamento":
+        f = [d for d in f if not _dev_is(d["devolucao"])]
+    f = sorted(f, key=lambda d: (d[campo_data].year, d[campo_data].month,
+                                 d["gerencia_regional"] if campo_data == "emissao" else "",
+                                 d["fantasia_vendedor"]))
+    result = []
+    for d in f[:int(limit)]:
+        dt = d[campo_data]
+        row = {
+            "ano": dt.year,
+            "mes": dt.month,
+            "vendedor": d["fantasia_vendedor"],
+            "pedido": d["pedido"],
+            "status_pedido": d["status_pedido"],
+            "codigo_produto": d["codigo_produto"],
+            "cod_origem": d["cod_origem"],
+            "razao": d["razao"],
+            "quantidade": round(float(d["quantidade"]), 2),
+            "total_item": round(float(d["total_item"]), 2),
+            "nota_fiscal": d["nota_fiscal"],
+            "familia": d["familia"],
+            "bu": d["bu"],
+            "area_de_negocio": d["area_de_negocio"],
+            "categorias": d["categorias"],
+            "canal": d["canal"],
+            "linha": d["linha"],
+        }
+        if campo_data == "emissao_faturamento":
+            row["faturamento_semst"] = round(float(d["faturamento_semst"]), 2)
+        else:
+            row["regional"] = d["gerencia_regional"]
+            row["emissao"] = dt.isoformat()
+        result.append(row)
+    return {"total": len(result), "limite": int(limit), "rows": result}
+
 
 # ─────────────────────────────────────────────
 #  Configuração
@@ -241,7 +651,12 @@ def status(user_id: Optional[str] = Depends(get_user_id_from_session)):
     cur = conn.cursor()
     try:
         if not _table_exists(cur):
-            return {"last_refresh_at": None, "refreshing": _refresh_in_progress, "has_data": False}
+            # Sem tabela externa: servimos base dummy determinística.
+            return {
+                "last_refresh_at": datetime(dummy.ANO_BASE, 12, 31, 12, 0, 0).isoformat(),
+                "refreshing": _refresh_in_progress,
+                "has_data": True,
+            }
         try:
             cols = _resolve_columns(cur)
             da = cols["data_atualizacao"]
@@ -268,7 +683,7 @@ def get_filtros(user_id: Optional[str] = Depends(get_user_id_from_session)):
     cur = conn.cursor()
     try:
         if not _table_exists(cur):
-            raise _data_unavailable()
+            return _dummy_filtros()
         cols = _resolve_columns(cur)
         ef = cols["emissao_faturamento"]
         fv = cols["fantasia_vendedor"]
@@ -316,7 +731,7 @@ def get_kpis(
     cur = conn.cursor()
     try:
         if not _table_exists(cur):
-            raise _data_unavailable()
+            return _dummy_kpis(ano, mes, vendedor, regional, segmento)
         cols = _resolve_columns(cur)
         where_sql, params = _build_filters(cols, ano, mes, vendedor, regional, segmento)
         DEV = _dev_sql(cols)
@@ -430,7 +845,7 @@ def get_por_vendedor(
     cur = conn.cursor()
     try:
         if not _table_exists(cur):
-            raise _data_unavailable()
+            return _dummy_por_vendedor(ano, mes, regional, segmento, comparar)
         cols = _resolve_columns(cur)
         where_sql, params = _build_filters(cols, ano=ano, mes=mes, regional=regional, segmento=segmento)
         DEV = _dev_sql(cols)
@@ -516,7 +931,7 @@ def get_por_regional(
     cur = conn.cursor()
     try:
         if not _table_exists(cur):
-            raise _data_unavailable()
+            return _dummy_por_regional(ano, mes, vendedor, segmento, comparar)
         cols = _resolve_columns(cur)
         where_sql, params = _build_filters(cols, ano=ano, mes=mes, vendedor=vendedor, segmento=segmento)
         DEV = _dev_sql(cols)
@@ -603,7 +1018,7 @@ def get_detalhes(
     cur = conn.cursor()
     try:
         if not _table_exists(cur):
-            raise _data_unavailable()
+            return _dummy_detalhes(ano, mes, vendedor, regional, segmento, limit, "emissao_faturamento")
         cols = _resolve_columns(cur)
         where_sql, params = _build_filters(cols, ano, mes, vendedor, regional, segmento)
         DEV = _dev_sql(cols)
@@ -691,7 +1106,7 @@ def pedidos_pivot(
     cur = conn.cursor()
     try:
         if not _table_exists(cur):
-            raise _data_unavailable()
+            return _dummy_pedidos_pivot(ano, vendedor, segmento, apenas_carteira)
         cols = _resolve_columns(cur)
         em = cols.get("emissao"); rg = cols["regional"]; ti = cols["total_item"]
         pd = cols["pedido"]; st = cols["status"]
@@ -755,7 +1170,7 @@ def pedidos_detalhes(
     cur = conn.cursor()
     try:
         if not _table_exists(cur):
-            raise _data_unavailable()
+            return _dummy_detalhes(ano, mes, vendedor, regional, segmento, limit, "emissao")
         cols = _resolve_columns(cur)
         em = cols.get("emissao")
         if not em:
@@ -858,7 +1273,7 @@ def get_serie_mensal(
     cur = conn.cursor()
     try:
         if not _table_exists(cur):
-            raise _data_unavailable()
+            return _dummy_serie_mensal(ano, vendedor, regional, segmento)
         cols = _resolve_columns(cur)
         DEV = _dev_sql(cols)
         ef = cols["emissao_faturamento"]; vlr = cols["vlr_financeiro"]
@@ -922,7 +1337,12 @@ def refresh(user_id: Optional[str] = Depends(get_user_id_from_session)):
     cur = conn.cursor()
     try:
         if not _table_exists(cur):
-            return {"status": "no_data", "message": "Tabela ainda não existe. Rode o script externo."}
+            rows = _gen_dummy_rows()
+            return {
+                "status": "ok",
+                "message": f"Base dummy com {len(rows)} linhas (sem fontes externas).",
+                "last_refresh_at": datetime(dummy.ANO_BASE, 12, 31, 12, 0, 0).isoformat(),
+            }
         cols = _resolve_columns(cur)
         da = cols["data_atualizacao"]
         cur.execute(f'SELECT MAX("{da}"), COUNT(*) FROM {TABLE}')

@@ -39,6 +39,7 @@ from db_utils import get_db_connection
 from permission_utils import check_module_permission
 from core.config import IMPORTED_ITEM_CODES, PROJECT_ID, FILE_PARAMETROS
 from modulo.importation import get_bq_client, _load_sheet_parametros_importacao  # reaproveita conexão e parser de planilha
+from core import dummy  # fundação dummy determinística (sem fontes externas)
 
 
 def _load_moq_map_db() -> Dict[str, float]:
@@ -548,7 +549,22 @@ def fetch_vendas_mensais(client, codigos: List[str], lookback_meses: int = LIMIT
           AND TRIM(CODIGO_PRODUTO) IN ({cods})
         GROUP BY 1, 2
     """
-    return client.query(q).to_dataframe(create_bqstorage_client=False)
+    # DUMMY determinístico — ignora `client`/BigQuery. Gera vendas mensais para os
+    # 12 meses de ANO_BASE (2026) por código, respeitando lookback_meses (último N
+    # meses do calendário dummy). Shape preservado: colunas COD, MES, QTD.
+    meses_str = dummy.meses_str("%Y-%m")          # ['2026-01', ..., '2026-12']
+    meses_recorte = meses_str[-int(lookback_meses):] if lookback_meses > 0 else meses_str
+    rows = []
+    for cod in codigos:
+        cod = str(cod).strip()
+        r = dummy.rng("importation_v2_vendas", cod)
+        # base de consumo mensal por SKU (estável por código)
+        base = r.randint(40, 600)
+        for mes in meses_recorte:
+            rm = dummy.rng("importation_v2_vendas", cod, mes)
+            qtd = float(max(0, round(base * (1 + rm.uniform(-0.35, 0.35)))))
+            rows.append({"COD": cod, "MES": mes, "QTD": qtd})
+    return pd.DataFrame(rows, columns=["COD", "MES", "QTD"])
 
 
 def fetch_estoque(client, codigos: List[str]) -> pd.DataFrame:
@@ -561,7 +577,14 @@ def fetch_estoque(client, codigos: List[str]) -> pd.DataFrame:
           AND TRIM(codigo_do_item) IN ({cods})
         GROUP BY 1
     """
-    return client.query(q).to_dataframe(create_bqstorage_client=False)
+    # DUMMY determinístico — ignora `client`/BigQuery. Saldo físico por SKU.
+    # Shape preservado: colunas COD, DISPONIVEL.
+    rows = []
+    for cod in codigos:
+        cod = str(cod).strip()
+        r = dummy.rng("importation_v2_estoque", cod)
+        rows.append({"COD": cod, "DISPONIVEL": float(r.randint(0, 2500))})
+    return pd.DataFrame(rows, columns=["COD", "DISPONIVEL"])
 
 
 # =====================================================================
@@ -629,10 +652,13 @@ def calculate(body: CalculateRequest, user_id: Optional[str] = Depends(get_user_
     if not codigos:
         raise HTTPException(status_code=400, detail="Lista de códigos vazia.")
 
+    # Cliente BigQuery não é mais necessário (dados dummy). Mantém a chamada por
+    # compat, mas vira no-op: se as credenciais faltarem, segue com client=None.
     try:
         client = get_bq_client()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro BigQuery: {e}")
+        print(f"[importation_v2] get_bq_client no-op (dummy): {e}")
+        client = None
 
     df_vendas = fetch_vendas_mensais(client, codigos, lookback_meses=LIMITE_GLOBAL_MESES)
     df_estoque = fetch_estoque(client, codigos)
@@ -2112,3 +2138,44 @@ def delete_versao(versao_id: int, user_id: Optional[str] = Depends(get_user_id_f
     if affected == 0:
         raise HTTPException(status_code=404, detail="Versão não encontrada ou sem permissão para excluir.")
     return {"ok": True}
+
+
+# =====================================================================
+# RELATÓRIO — Conversão para dados dummy determinísticos (sem fontes externas)
+# =====================================================================
+# (a) Externas substituídas:
+#     - fetch_vendas_mensais: BigQuery client.query(...).to_dataframe(...) →
+#       gerador dummy.rng() determinístico. Ignora `client`.
+#     - fetch_estoque: BigQuery client.query(...).to_dataframe(...) →
+#       gerador dummy.rng() determinístico. Ignora `client`.
+#     - /calculate: get_bq_client() agora é no-op (não levanta 500 sem
+#       credenciais; client=None e segue com dummy). Postgres do app intacto.
+#     (Não substituídas neste módulo, pois NÃO são chamadas externas próprias:
+#      _load_sheet_parametros_importacao e get_bq_client vivem em
+#      modulo/importation.py — fora do escopo deste arquivo; ver "não confirmados".)
+#
+# (b) Shape exato (preservado):
+#     - fetch_vendas_mensais → DataFrame colunas: ['COD'(str), 'MES'(str 'YYYY-MM'), 'QTD'(float64)]
+#       1 linha por (código × mês); cobre os 12 meses de 2026 (respeita lookback_meses).
+#     - fetch_estoque → DataFrame colunas: ['COD'(str), 'DISPONIVEL'(float64)]; 1 linha por código.
+#     Consumidores (calculate → calc_sku) usam r["COD"], r["MES"], r["QTD"],
+#     df_estoque["COD"]/["DISPONIVEL"] — todos mantidos.
+#
+# (c) Teste real (cd backend && /c/Python312/python -c "..."):
+#     fetch_vendas_mensais(None, ['10401085','10400044','10402210']):
+#       VENDAS cols: ['COD','MES','QTD'] | QTD dtype float64
+#       meses cobertos: 12 -> 2026-01 ... 2026-12 (todos 2026: True, 12 meses: True)
+#       rows por cod: 12 cada | determinismo: True (2ª chamada idêntica)
+#       amostra: 10401085 2026-01 387.0 / 2026-02 634.0 / 2026-03 440.0
+#     fetch_estoque(None, mesmos cods):
+#       ESTOQUE cols: ['COD','DISPONIVEL'] | {'10401085':1544.0,'10400044':1153.0,'10402210':2360.0}
+#     lookback_meses=3 → ['2026-10','2026-11','2026-12'] (recorte correto)
+#     import do módulo OK (router.prefix == '/importation-v2').
+#
+# (d) Não confirmados / fora de escopo:
+#     - _load_sheet_parametros_importacao (gspread/Drive) e get_bq_client/_load_moq_map
+#       lendo Excel (FILE_PARAMETROS) ainda apontam para fontes externas, mas estão
+#       em modulo/importation.py ou dependem de arquivos locais; o alvo era APENAS
+#       este arquivo. Aqui já tratados de forma resiliente (try/except → fallback
+#       vazio / client=None), então /calculate funciona só com dummy.
+# =====================================================================

@@ -27,6 +27,8 @@ from modulo.programacao import (
     carregar_ops, _bq_client, _parse_dt_flex, _user_name,
 )
 from pydantic import BaseModel
+# Dados dummy determinísticos (substitui BigQuery/StarSoft — app sobe sem credenciais).
+from core import dummy
 
 router = APIRouter(prefix="/otimizador-faturamento", tags=["otimizador_faturamento"])
 logger = logging.getLogger(__name__)
@@ -118,13 +120,99 @@ _CART_CACHE: Dict[str, dict] = {}
 _CART_TTL = 300  # 5 min
 
 
+# ---- Dados dummy determinísticos (substituem BigQuery; mesmo shape de linha) ----
+# As funções abaixo geram as mesmas "linhas" (dicts com as MESMAS keys) que a view do
+# BigQuery devolvia, para que toda a transformação a jusante permaneça intacta.
+
+def _dummy_skus() -> List[Tuple[str, str]]:
+    """(codigo_normalizado, descricao) do pool de produtos dummy."""
+    return [(_norm(cod), desc) for (cod, desc, _un, _cat) in dummy.PRODUTOS]
+
+
+def _dummy_rows_estoque() -> List[Dict[str, object]]:
+    """Linhas da FAT_SQL_ESTOQUE: Codigo, Disponivel, Reserva."""
+    rows: List[Dict[str, object]] = []
+    for cod, _desc in _dummy_skus():
+        r = dummy.rng("fat_estoque", cod)
+        rows.append({
+            "Codigo": cod,
+            "Disponivel": float(r.randint(0, 4000)),
+            "Reserva": float(r.randint(0, 1200)),
+        })
+    return rows
+
+
+def _dummy_rows_ops() -> List[Dict[str, object]]:
+    """Linhas equivalentes a carregar_ops (OPs abertas) — só keys lidas por _producao_por_codigo."""
+    rows: List[Dict[str, object]] = []
+    for cod, desc in _dummy_skus():
+        r = dummy.rng("fat_ops", cod)
+        qtd_op = float(r.randint(200, 3000))
+        apontada = float(r.randint(0, int(qtd_op)))
+        rows.append({
+            "numero_op": f"OP{r.randint(10000, 99999)}",
+            "codigo": cod,
+            "descricao": desc,
+            "qtd_op": qtd_op,
+            "apontada": apontada,
+        })
+    return rows
+
+
+def _dummy_rows_carteira(status_sel: tuple) -> List[Dict[str, object]]:
+    """Linhas da carteira FRESH (Metas_por_faturamento, STATUS em aberto).
+
+    Gera pedidos com itens (1..4 SKUs do pool), valores/quantidades plausíveis e
+    datas de emissão/entrega cobrindo os 12 meses de 2026 (ANO_BASE).
+    Mesmas keys lidas em _carteira_aberta_fresh_bq: RAZAO, EMISSAO, ENTREGA,
+    PEDIDO, DESCRICAO_PRODUTO, CODIGO_PRODUTO, TOTAL_ITEM, QUANTIDADE,
+    DESC_TIPODOCUMENTO, SITUACAO, tem_saldo_parcial.
+    """
+    skus = _dummy_skus()
+    tipos = ["VENDA", "BONIFICACAO", "VENDA", "VENDA"]
+    rows: List[Dict[str, object]] = []
+    # 36 pedidos -> 3 por mês (datas_no_ano garante 1 em cada mês de 2026)
+    datas = dummy.datas_no_ano(36, chave="fat_carteira_datas")
+    for i, emissao in enumerate(datas):
+        r = dummy.rng("fat_carteira", i)
+        ped = f"DUM-{i + 1:05d}"
+        cliente = dummy.escolher(r, dummy.CLIENTES)
+        # entrega = emissão + 5..40 dias (mantém previsão dentro/ao redor do mês)
+        from datetime import timedelta as _td
+        entrega = emissao + _td(days=r.randint(5, 40))
+        situacao = "1" if (i % 7 == 0) else "0"          # 1 => PENDENTE_FINANCEIRO
+        tem_saldo = bool(i % 5 == 0)                       # ~20% com saldo parcial
+        tipo_doc = tipos[i % len(tipos)]
+        n_itens = r.randint(1, 4)
+        for cod, desc in r.sample(skus, n_itens):
+            qtd = float(r.randint(10, 600))
+            valor_item = dummy.valor(r, base=8000.0, var=0.6)
+            rows.append({
+                "RAZAO": cliente,
+                "EMISSAO": emissao.isoformat(),
+                "ENTREGA": entrega.strftime("%d/%m/%Y"),
+                "EMISSAO_ORIGINAL": emissao.isoformat(),
+                "PEDIDO": ped,
+                "DESCRICAO_PRODUTO": desc,
+                "CODIGO_PRODUTO": cod,
+                "TOTAL_ITEM": valor_item,
+                "QUANTIDADE": qtd,
+                "DESC_TIPODOCUMENTO": tipo_doc,
+                "STATUS_PEDIDO": status_sel[0],
+                "SITUACAO": situacao,
+                "GERENCIA_REGIONAL": dummy.escolher(r, dummy.ESTADOS),
+                "tem_saldo_parcial": tem_saldo,
+            })
+    return rows
+
+
 def _carregar_estoque(refresh: bool = False) -> Dict[str, Dict[str, float]]:
     import time
     agora = time.time()
     if not refresh and _EST_CACHE["data"] is not None and (agora - float(_EST_CACHE["ts"])) < _EST_TTL:
         return _EST_CACHE["data"]  # type: ignore[return-value]
-    client = _bq_client()
-    rows = client.query(FAT_SQL_ESTOQUE).result()
+    # Dummy: substitui client.query(FAT_SQL_ESTOQUE).result()
+    rows = _dummy_rows_estoque()
     est: Dict[str, Dict[str, float]] = {}
     for r in rows:
         cod = _norm(r["Codigo"])
@@ -141,7 +229,8 @@ def _carregar_estoque(refresh: bool = False) -> Dict[str, Dict[str, float]]:
 
 def _producao_por_codigo(refresh: bool = False) -> Dict[str, float]:
     """Quantidade em produção por código = soma de (planejada - apontada) das OPs abertas (situação 8)."""
-    ops = carregar_ops(refresh)
+    # Dummy: substitui carregar_ops (BigQuery) — mesmas keys lidas (codigo, qtd_op, apontada).
+    ops = _dummy_rows_ops()
     prod: Dict[str, float] = {}
     for op in ops:
         cod = _norm(op.get("codigo"))
@@ -170,8 +259,8 @@ def _carteira_aberta_fresh_bq(refresh: bool = False, status=None) -> Dict[str, d
     ent = _CART_CACHE.get(cache_key)
     if not refresh and ent is not None and (agora - float(ent["ts"])) < _CART_TTL:
         return ent["data"]  # type: ignore[return-value]
-    client = _bq_client()
-    rows = list(client.query(_fat_sql_carteira(status_sel)).result())
+    # Dummy: substitui client.query(_fat_sql_carteira(status_sel)).result()
+    rows = _dummy_rows_carteira(status_sel)
     out: Dict[str, dict] = {}
     for r in rows:
         ped = str(r["PEDIDO"] or "").strip()
@@ -1971,6 +2060,47 @@ ORDER BY NOTA_FISCAL_EMISSAO DESC, PEDIDO, CODIGO_PRODUTO
 """
 
 
+def _dummy_rows_historico(de: str, ate: str) -> List[Dict[str, object]]:
+    """Linhas dummy do histórico (STATUS 5/6, NF emitida) no range [de, ate] (YYYY-MM-DD).
+
+    Mesmas keys lidas em historico_faturamento. Gera notas espalhadas pelos 12 meses de
+    2026 e mantém só as cujo NOTA_FISCAL_EMISSAO cai dentro do intervalo pedido.
+    """
+    from datetime import timedelta as _td
+    skus = _dummy_skus()
+    rows: List[Dict[str, object]] = []
+    # 60 NFs cobrindo o ano inteiro (datas_no_ano garante 1 por mês)
+    datas = dummy.datas_no_ano(60, chave="fat_historico_datas")
+    for i, nf_dt in enumerate(datas):
+        nf_iso = nf_dt.isoformat()
+        if nf_iso < de or nf_iso > ate:
+            continue
+        r = dummy.rng("fat_historico", i)
+        ped = f"HST-{i + 1:05d}"
+        cliente = dummy.escolher(r, dummy.CLIENTES)
+        emissao = nf_dt - _td(days=r.randint(3, 30))
+        entrega = nf_dt + _td(days=r.randint(0, 20))
+        status = "5" if (i % 2 == 0) else "6"
+        tipo_doc = "VENDA" if (i % 4) else "BONIFICACAO"
+        n_itens = r.randint(1, 4)
+        for cod, desc in r.sample(skus, n_itens):
+            rows.append({
+                "NOTA_FISCAL": f"NF{100000 + i}",
+                "NOTA_FISCAL_EMISSAO": nf_iso,
+                "PEDIDO": ped,
+                "RAZAO": cliente,
+                "CODIGO_PRODUTO": cod,
+                "DESCRICAO_PRODUTO": desc,
+                "QUANTIDADE": float(r.randint(10, 500)),
+                "TOTAL_ITEM": dummy.valor(r, base=7000.0, var=0.6),
+                "STATUS_PEDIDO": status,
+                "DESC_TIPODOCUMENTO": tipo_doc,
+                "EMISSAO": emissao.isoformat(),
+                "ENTREGA": entrega.strftime("%d/%m/%Y"),
+            })
+    return rows
+
+
 @router.get("/historico")
 def historico_faturamento(de: str, ate: str, user_id: Optional[str] = Depends(get_user_id_from_session)):
     """18/06: Histórico de faturamento (STATUS=5,6) por data de emissão da NF.
@@ -1988,18 +2118,12 @@ def historico_faturamento(de: str, ate: str, user_id: Optional[str] = Depends(ge
     except Exception:
         raise HTTPException(status_code=400, detail="Datas devem estar em YYYY-MM-DD")
 
-    # 1) Query BQ — STATUS=5/6 no range
+    # 1) Dummy — STATUS=5/6 no range (substitui client.query(FAT_SQL_HISTORICO))
     try:
-        from google.cloud.bigquery import ScalarQueryParameter, QueryJobConfig
-        client = _bq_client()
-        cfg = QueryJobConfig(query_parameters=[
-            ScalarQueryParameter("de", "DATE", de),
-            ScalarQueryParameter("ate", "DATE", ate),
-        ])
-        rows = list(client.query(FAT_SQL_HISTORICO, job_config=cfg).result())
+        rows = _dummy_rows_historico(de, ate)
     except Exception as e:
-        logger.error(f"Erro ao buscar histórico do BQ: {e}")
-        raise HTTPException(status_code=502, detail=f"Erro BigQuery: {e}")
+        logger.error(f"Erro ao gerar histórico dummy: {e}")
+        raise HTTPException(status_code=502, detail=f"Erro histórico: {e}")
 
     # 2) Pra cada data única de NF, busca o plano oficial vigente naquele dia
     conn = get_db_connection()

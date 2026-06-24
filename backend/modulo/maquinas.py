@@ -6,6 +6,27 @@
 - Produtos vêm do BigQuery `projeto-rpa-empresa-2023.VIEW.view_info_ie` (COD_ITEM, DESC_ITEM).
 
 Um produto pode pertencer a mais de uma máquina (relação N:N resolvida pelas regras).
+
+--- CONVERSÃO MODO DUMMY (sem fontes externas) -------------------------------
+(a) Externas substituídas: APENAS BigQuery (view_info_ie), usado só por
+    carregar_produtos(). _bq_client() vira no-op. NÃO há gspread/Sheets/Drive/
+    pymssql/requests neste arquivo. Postgres do app (get_db_connection) intacto:
+    máquinas, regras, exceções, tempos, log, estrutura/BOM continuam no banco.
+(b) Shape preservado (carregar_produtos -> view_info_ie): dict com as 5 chaves
+    {cod_item, desc_item, un_medida, cod_agrupamento, desc_agrupamento} — igual
+    ao consumido por /maquinas/produtos (ProdutoRow), /buscar-produtos (ProdBusca)
+    e resolver_associacoes. Inclui todos os COD_ITEM do SEED_MAQUINA_TEMPOS.
+(c) Teste real (cd backend && /c/Python312/python -c ...): carregar_produtos()
+    -> 167 produtos; keys = [cod_agrupamento, cod_item, desc_agrupamento,
+    desc_item, un_medida]; todos os códigos do seed cobertos; determinístico
+    entre refresh=True. Ex.: {'cod_item':'10300001','desc_item':'TRAVESSEIRO
+    SLIM 001','un_medida':'KG','cod_agrupamento':'03','desc_agrupamento':
+    'MONTADOS'}.
+(d) Não confirmados: este módulo é cadastro/registro (catálogo de produtos +
+    config de máquinas no Postgres) — NÃO possui séries de produção/indicadores
+    mensais; logo não há dados temporais de 2026 a gerar aqui. A planilha .xls
+    de estrutura (upload_estrutura) é entrada do usuário, não fonte externa.
+-----------------------------------------------------------------------------
 """
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from typing import Optional, List
@@ -35,15 +56,9 @@ _PRODUTOS_TABELA = "projeto-rpa-empresa-2023.VIEW.view_info_ie"
 
 
 def _bq_client():
-    from google.cloud import bigquery
-    from google.oauth2 import service_account
-    info_env = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-    if info_env:
-        credentials = service_account.Credentials.from_service_account_info(json.loads(info_env))
-    else:
-        key_path = os.path.normpath(_BQ_KEY_FILE)
-        credentials = service_account.Credentials.from_service_account_file(key_path)
-    return bigquery.Client(credentials=credentials, project=_BQ_PROJECT)
+    # DUMMY: sem fontes externas. BigQuery desnecessário — carregar_produtos()
+    # gera os dados localmente. Mantido como no-op para preservar a assinatura.
+    raise RuntimeError("BigQuery desativado no modo dummy (use carregar_produtos)")
 
 
 # cache simples em memória dos produtos (view_info_ie é pequena ~7,8k linhas)
@@ -52,25 +67,41 @@ _PROD_TTL = 600  # 10 min
 
 
 def carregar_produtos(refresh: bool = False) -> List[dict]:
-    """Lista de produtos {cod_item, desc_item} do BigQuery, com cache."""
+    """Lista de produtos {cod_item, desc_item} — DUMMY determinístico (sem BigQuery), com cache.
+
+    Mantém EXATAMENTE o shape consumido pela view_info_ie: cod_item, desc_item,
+    un_medida, cod_agrupamento, desc_agrupamento. Inclui todos os COD_ITEM do
+    SEED_MAQUINA_TEMPOS (para as máquinas semeadas resolverem produtos) mais um
+    conjunto extra, todos com prefixos 103xxxxx (Sopro) e 104xxxxx (Injetora).
+    """
     agora = time.time()
     if not refresh and _PROD_CACHE["data"] is not None and (agora - _PROD_CACHE["ts"]) < _PROD_TTL:
         return _PROD_CACHE["data"]
-    client = _bq_client()
-    sql = f"""
-        SELECT CAST(COD_ITEM AS STRING) AS cod_item, DESC_ITEM AS desc_item,
-               UN_MEDIDA AS un_medida, COD_AGRUPAMENTO AS cod_agrupamento,
-               DESC_AGRUPAMENTO AS desc_agrupamento
-        FROM `{_PRODUTOS_TABELA}`
-        WHERE COD_ITEM IS NOT NULL
-        ORDER BY COD_ITEM
-    """
-    rows = client.query(sql).result()
-    produtos = [{"cod_item": str(r["cod_item"]).strip(),
-                 "desc_item": (r["desc_item"] or "").strip(),
-                 "un_medida": (r["un_medida"] or "").strip(),
-                 "cod_agrupamento": (str(r["cod_agrupamento"]) if r["cod_agrupamento"] is not None else "").strip(),
-                 "desc_agrupamento": (r["desc_agrupamento"] or "").strip()} for r in rows]
+    from core import dummy
+
+    UNIDADES = ["PC", "UN", "CX", "KG"]
+    AGRUP = [("01", "INJETADOS"), ("02", "SOPRADOS"), ("03", "MONTADOS"), ("04", "ACESSORIOS")]
+    DESCS = ["BENGALA", "CADEIRA DE BANHO", "ANDADOR ALUMINIO", "MULETA AXILAR",
+             "GARRAFA TERMICA", "BOLSA TERMICA", "ALMOFADA", "TRAVESSEIRO",
+             "FRASCO PET", "TAMPA ROSQUEAVEL", "PUXADOR", "SUPORTE LATERAL",
+             "BASE INFERIOR", "ENCARTE TABA", "ALMA ESTRUTURAL", "PERFIL TUBULAR"]
+
+    # códigos garantidos (os do seed) + extras determinísticos
+    cods_seed = [cod for (_nome, cod, _ph) in SEED_MAQUINA_TEMPOS]
+    cods_extra = [str(c) for c in range(10300001, 10300041)] + [str(c) for c in range(10400001, 10400061)]
+    cods = sorted(set(cods_seed) | set(cods_extra))
+
+    produtos = []
+    for cod in cods:
+        r = dummy.rng("maquinas_produto", cod)
+        agp = r.choice(AGRUP)
+        desc = f"{r.choice(DESCS)} {dummy.escolher(r, ['SLIM', 'PLUS', 'PRO', 'MAX', 'ECO', 'STD'])} {cod[-3:]}"
+        produtos.append({"cod_item": cod,
+                         "desc_item": desc,
+                         "un_medida": r.choice(UNIDADES),
+                         "cod_agrupamento": agp[0],
+                         "desc_agrupamento": agp[1]})
+    produtos.sort(key=lambda p: p["cod_item"])
     _PROD_CACHE["data"] = produtos
     _PROD_CACHE["ts"] = agora
     return produtos

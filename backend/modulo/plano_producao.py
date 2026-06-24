@@ -5,6 +5,12 @@ Fonte: gerar_plano_producao.py (EMPRESA).
 Adapta carregar_dados para receber DataFrames (BigQuery direto).
 Persiste cada execucao em portal_chamado(_homolog).plano_producao_versoes.
 Retencao: 30 dias (limpeza automatica a cada gerar()).
+
+MODO DUMMY (sem fontes externas): a unica fonte externa deste modulo era o
+BigQuery, acessado por _bq_client()/carregar_dados_bq(). carregar_dados_bq()
+agora monta (ped, est) deterministicamente via core.dummy (_dados_dummy),
+preservando as mesmas colunas/tipos; _bq_client() ficou desativado. Postgres
+(db_utils / plano_producao_versoes) permanece intacto.
 """
 import io
 import os
@@ -106,15 +112,10 @@ _BQ_KEY_FILE = os.path.join(os.path.dirname(__file__), "..", "projeto-rpa-empres
 _BQ_PROJECT = "projeto-rpa-empresa-2023"
 
 def _bq_client():
-    from google.cloud import bigquery
-    from google.oauth2 import service_account
-    info_env = os.environ.get("GOOGLE_CREDENTIALS_JSON")
-    if info_env:
-        credentials = service_account.Credentials.from_service_account_info(json.loads(info_env))
-    else:
-        key_path = os.path.normpath(_BQ_KEY_FILE)
-        credentials = service_account.Credentials.from_service_account_file(key_path)
-    return bigquery.Client(credentials=credentials, project=_BQ_PROJECT)
+    # MODO DUMMY: sem fontes externas. O cliente BigQuery deixa de ser necessario
+    # (carregar_dados_bq monta os DataFrames a partir de core.dummy). Mantido como
+    # no-op lazy para nao quebrar import/credenciais; nao deve ser chamado.
+    raise RuntimeError("BigQuery desativado (modo dummy): use carregar_dados_bq().")
 
 
 # =============================================================================
@@ -143,10 +144,107 @@ def parse_data_pt(s):
     return pd.Timestamp(year=ano, month=mes, day=dia)
 
 
-def carregar_dados_bq() -> tuple:
-    """Carrega estoque + pedidos diretamente do BigQuery e normaliza."""
-    client = _bq_client()
+def _dados_dummy() -> tuple:
+    """Monta (ped, est) deterministicamente a partir de core.dummy.
 
+    Preserva EXATAMENTE as colunas que vinham do BigQuery:
+      ped: RAZAO, EMISSAO, ENTREGA, EMISSAO_ORIGINAL, PEDIDO, DESCRICAO_PRODUTO,
+           CODIGO_PRODUTO, TOTAL_ITEM, QUANTIDADE, DESC_TIPODOCUMENTO,
+           STATUS_PEDIDO, SITUACAO, GERENCIA_REGIONAL
+      est: CODIGO_PRODUTO, QUANTIDADE_DISPONIVEL, QUANTIDADE_RESERVA
+    Pedidos cobrem os 12 meses de 2026 (lancamentos em TODOS os meses).
+    """
+    from core import dummy
+
+    r = dummy.rng('plano_producao', 'pedidos', dummy.ANO_BASE)
+    ano = dummy.ANO_BASE
+    hoje = date(ano, 6, 24)  # referencia p/ produzir atrasados/imediatos/programados
+
+    # SKUs canonicos (codigo sem 'BR'); descricao do pool de produtos
+    prods = dummy.PRODUTOS
+    tipos_doc = ['VENDA', 'DEPÓSITO ANTECIPADO', 'SAC', 'BONIFICAÇÃO', 'TROCA']
+    regionais = ['REGIONAL SUL', 'REGIONAL SUDESTE', 'REGIONAL NORDESTE', 'REGIONAL CENTRO-OESTE']
+
+    ped_rows = []
+    n_ped = 0
+    # 4 pedidos por mes -> 48 pedidos, garantindo lancamentos em todos os meses
+    for mes in range(1, 13):
+        for k in range(4):
+            n_ped += 1
+            pedido = f"PV{ano%100:02d}{n_ped:05d}"
+            cliente = dummy.escolher(r, dummy.CLIENTES)
+            tipo = dummy.escolher(r, tipos_doc)
+            # 1 em cada 8 e' pedido interno (RAZAO especial -> grupo INTERNO)
+            if n_ped % 8 == 0:
+                cliente = 'EMPRESA PEDIDOS INTERNOS'
+            emissao = dummy.dia_aleatorio(ano, mes, r)
+            # entrega: distribui atrasado (passado), imediato (=emissao), programado (futuro)
+            faixa = n_ped % 3
+            if faixa == 0:        # atrasado: entrega < hoje
+                entrega = emissao if emissao < hoje else dummy.dia_aleatorio(ano, max(1, mes-1), r)
+                emissao_orig = entrega
+            elif faixa == 1:      # imediato: entrega == emissao_orig == emissao
+                entrega = emissao
+                emissao_orig = emissao
+            else:                 # programado: entrega no futuro
+                fut_mes = min(12, mes + 2)
+                entrega = dummy.dia_aleatorio(ano, fut_mes, r)
+                emissao_orig = emissao
+            status = dummy.escolher(r, ['1', '4'])          # apos filtro WHERE
+            regional = dummy.escolher(r, regionais)
+            # 2 a 4 itens por pedido
+            n_itens = r.randint(2, 4)
+            skus = r.sample(prods, n_itens)
+            for (cod, desc, _un, _cat) in skus:
+                qtd = r.randint(5, 60)
+                preco = dummy.valor(r, base=120.0, var=0.5)
+                total = round(qtd * preco, 2)
+                # exercita o strip de 'BR' em ~1/4 dos SKUs (BQ trazia codigos com prefixo BR)
+                cod_ped = ('BR' + cod) if (r.random() < 0.25) else cod
+                ped_rows.append({
+                    'RAZAO': cliente,
+                    'EMISSAO': emissao.strftime('%Y-%m-%d'),
+                    'ENTREGA': entrega.strftime('%Y-%m-%d'),
+                    'EMISSAO_ORIGINAL': emissao_orig.strftime('%Y-%m-%d'),
+                    'PEDIDO': pedido,
+                    'DESCRICAO_PRODUTO': desc,
+                    'CODIGO_PRODUTO': cod_ped,
+                    'TOTAL_ITEM': total,
+                    'QUANTIDADE': qtd,
+                    'DESC_TIPODOCUMENTO': tipo,
+                    'STATUS_PEDIDO': status,
+                    'SITUACAO': 'ATIVO',
+                    'GERENCIA_REGIONAL': regional,
+                })
+    ped = pd.DataFrame(ped_rows, columns=[
+        'RAZAO', 'EMISSAO', 'ENTREGA', 'EMISSAO_ORIGINAL', 'PEDIDO', 'DESCRICAO_PRODUTO',
+        'CODIGO_PRODUTO', 'TOTAL_ITEM', 'QUANTIDADE', 'DESC_TIPODOCUMENTO',
+        'STATUS_PEDIDO', 'SITUACAO', 'GERENCIA_REGIONAL'])
+
+    # Estoque: uma linha por SKU canonico. Estoque deliberadamente parcial para
+    # forcar producao (qty_produzir > 0) em parte dos itens.
+    re = dummy.rng('plano_producao', 'estoque', ano)
+    est_rows = []
+    for (cod, _desc, _un, _cat) in prods:
+        disp = re.randint(0, 200)
+        reserva = re.randint(0, 40)
+        est_rows.append({
+            'CODIGO_PRODUTO': cod,
+            'QUANTIDADE_DISPONIVEL': disp,
+            'QUANTIDADE_RESERVA': reserva,
+        })
+    est = pd.DataFrame(est_rows, columns=['CODIGO_PRODUTO', 'QUANTIDADE_DISPONIVEL', 'QUANTIDADE_RESERVA'])
+    return ped, est
+
+
+def carregar_dados_bq() -> tuple:
+    """Carrega estoque + pedidos (MODO DUMMY: gerados em core.dummy) e normaliza.
+
+    Antes vinha do BigQuery. Agora os DataFrames sao montados deterministicamente
+    a partir de core.dummy, preservando EXATAMENTE as colunas/tipos que o restante
+    do pipeline e o frontend consomem. SQL original mantido como referencia abaixo.
+    """
+    # SQL original (referencia — nao executado em modo dummy):
     # STATUS_PEDIDO eh STRING no BigQuery, comparar como string
     sql_pedidos = """
         SELECT RAZAO, EMISSAO, ENTREGA, EMISSAO_ORIGINAL, PEDIDO, DESCRICAO_PRODUTO,
@@ -168,8 +266,7 @@ def carregar_dados_bq() -> tuple:
         WHERE CODIGO_ITEM IS NOT NULL
         GROUP BY CODIGO_ITEM
     """
-    ped = client.query(sql_pedidos).to_dataframe(create_bqstorage_client=False)
-    est = client.query(sql_estoque).to_dataframe(create_bqstorage_client=False)
+    ped, est = _dados_dummy()
 
     # Normalizacao (mesma logica do script original)
     ped['COD'] = ped['CODIGO_PRODUTO'].astype(str).str.replace('BR', '', regex=False).str.strip()

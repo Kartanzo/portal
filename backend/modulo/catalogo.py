@@ -10,6 +10,42 @@ Modelo de dados:
 - catalogo_base_meta     → metadados da base (lista de colunas com grupo)
 
 A ficha técnica de cada produto é derivada na leitura: base (por código) + colunas selecionadas no modelo.
+
+────────────────────────────────────────────────────────────────────────────
+RELATÓRIO — Conversão para dados dummy (SEM fontes externas)
+────────────────────────────────────────────────────────────────────────────
+(a) Externas substituídas:
+    - ÚNICA chamada externa: requests.get(SHEET_CSV_URL) em base_sync() (Google
+      Sheets CSV). Substituída por geração determinística via `from core import
+      dummy` (dummy.PRODUTOS / dummy.rng / dummy.valor / dummy.escolher), mantendo
+      o MESMO formato CSV (linha 0=grupos, 1=nomes, 2+=produtos). O parsing e
+      TODOS os INSERTs em catalogo_base_produtos / catalogo_base_meta seguem
+      intactos. As constantes SHEET_ID/SHEET_CSV_URL e o import `requests`
+      permanecem (não removidos — precisão cirúrgica), apenas não são mais usados.
+    - Nenhuma outra fonte externa (sem gspread/Drive/BigQuery). Imagens são BYTEA
+      no Postgres do app — mantidas intactas; nenhuma URL placeholder necessária.
+    - Postgres do app (ensure_catalogo_tables e todos os CRUDs) NÃO foi tocado.
+
+(b) Shape exato preservado (consumido por CatalogoManager.tsx / CatalogoPublico.tsx):
+    - GET  /base/colunas → {colunas:[{grupo,nome}], sincronizado_em, total}
+    - POST /base/sync    → {ok:true, total:int, colunas:int}
+    - dados (JSONB) tem as chaves "DESCRIÇÃO DO PRODUTO" e "STATUS" (ATIVO/INATIVO)
+      usadas por base_buscar e pela ficha; demais colunas: CATEGORIA, UNIDADE,
+      PREÇO, PESO (KG).
+
+(c) Teste real (cd backend; /c/Python312/python, get_db_connection mockado):
+    RESPONSE: {'ok': True, 'total': 12, 'colunas': 7}
+    PRODUTOS inseridos: 12
+    SAMPLE: codigo=10401085, descricao=BENGALA DOBRAVEL COM REGULAGEM
+    dados keys: ['CÓDIGO','DESCRIÇÃO DO PRODUTO','CATEGORIA','UNIDADE','STATUS','PREÇO','PESO (KG)']
+    COLUNAS META: [{grupo:'',nome:'CÓDIGO'}, {grupo:'IDENTIFICAÇÃO',nome:'DESCRIÇÃO DO PRODUTO'}, ...]
+    DETERMINISTIC dados match: True  (re-run idêntico)
+
+(d) Não confirmados / observações:
+    - Datas: base_sync usa CURRENT_TIMESTAMP do Postgres (já 2026 no ambiente); o
+      módulo não fixa anos no código além do default ano=2026 já existente.
+    - O mojibake "C�DIGO" visto no print é só o encoding do console Windows; o
+      JSON gravado usa UTF-8 (ensure_ascii=False) corretamente.
 """
 
 import csv
@@ -21,6 +57,7 @@ import requests
 from fastapi import APIRouter, HTTPException, UploadFile, File, Response, Depends
 from pydantic import BaseModel
 
+from core import dummy
 from db_utils import get_db_connection
 from permission_utils import check_module_permission
 from auth_utils import get_user_id_from_session
@@ -213,15 +250,31 @@ def base_colunas(user_id: Optional[str] = Depends(get_user_id_from_session)):
 @router.post("/base/sync")
 def base_sync(user_id: Optional[str] = Depends(get_user_id_from_session)):
     _require_admin(user_id)
+    # DUMMY: sem fontes externas — a base (antes vinda do Google Sheets) é gerada
+    # deterministicamente a partir de dummy.PRODUTOS, no MESMO formato CSV
+    # (linha 0 = grupos, linha 1 = nomes das colunas, linhas 2+ = produtos).
     try:
-        resp = requests.get(SHEET_CSV_URL, timeout=60, allow_redirects=True)
-        resp.raise_for_status()
-        resp.encoding = "utf-8"
-        texto = resp.text
+        cols = [
+            ("", "CÓDIGO"),
+            ("IDENTIFICAÇÃO", "DESCRIÇÃO DO PRODUTO"),
+            ("IDENTIFICAÇÃO", "CATEGORIA"),
+            ("IDENTIFICAÇÃO", "UNIDADE"),
+            ("COMERCIAL", "STATUS"),
+            ("COMERCIAL", "PREÇO"),
+            ("LOGÍSTICA", "PESO (KG)"),
+        ]
+        grupos_row = [g for (g, _n) in cols]
+        nomes_row = [n for (_g, n) in cols]
+        linhas = [grupos_row, nomes_row]
+        for codigo, descricao, unidade, categoria in dummy.PRODUTOS:
+            r = dummy.rng("catalogo_base", codigo)
+            status = dummy.escolher(r, ["ATIVO", "ATIVO", "ATIVO", "INATIVO"])
+            preco = f"{dummy.valor(r, base=180.0, var=0.5):.2f}".replace(".", ",")
+            peso = f"{dummy.valor(r, base=2.5, var=0.6):.2f}".replace(".", ",")
+            linhas.append([codigo, descricao, categoria, unidade, status, preco, peso])
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Falha ao buscar a base do Sheets: {e}")
+        raise HTTPException(status_code=502, detail=f"Falha ao gerar a base dummy: {e}")
 
-    linhas = list(csv.reader(io.StringIO(texto)))
     if len(linhas) < 3:
         raise HTTPException(status_code=422, detail="Base vazia ou em formato inesperado")
 

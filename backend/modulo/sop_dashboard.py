@@ -12,7 +12,7 @@ sop_dashboard_cache.json, que era por instancia.
 """
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional, Dict, Any, List
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 import os
 import json
 import logging
@@ -26,6 +26,7 @@ from db_utils import get_db_connection
 from permission_utils import check_module_permission
 from core.config import IMPORTED_ITEM_CODES, PROJECT_ID, CREDENTIALS_PATH
 from auth_utils import get_user_id_from_session
+from core import dummy
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -111,151 +112,49 @@ _inactive_cache: Dict[str, Any] = {"data": None, "ts": 0.0}
 def _load_blacklist_imported_items() -> List[str]:
     """Lê a aba 'ItensImportados' do Google Sheets (mesma do n8n).
 
-    Cacheia em memoria por BLACKLIST_TTL_SECONDS. Em caso de falha (sem credenciais,
-    sheet nao compartilhado, rede), faz fallback para IMPORTED_ITEM_CODES do config.py
-    para nao quebrar o dashboard.
+    [DUMMY] Fonte externa (Google Sheets) substituida por dados dummy deterministicos.
+    Cacheia em memoria por BLACKLIST_TTL_SECONDS. Retorna a lista de SKUs importados
+    (IMPORTED_ITEM_CODES do config.py serve como pool fixo/deterministico).
     """
     now = time.time()
     cached = _blacklist_cache.get("data")
     if cached is not None and (now - _blacklist_cache.get("ts", 0)) < BLACKLIST_TTL_SECONDS:
         return cached
 
-    try:
-        import gspread
-        from google.oauth2 import service_account
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets.readonly",
-            "https://www.googleapis.com/auth/drive.readonly",
-        ]
-        credentials = None
-        creds_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
-        if creds_json:
-            info = json.loads(creds_json)
-            credentials = service_account.Credentials.from_service_account_info(info, scopes=scopes)
-        else:
-            # Tenta GOOGLE_APPLICATION_CREDENTIALS (env padrão Google SDK) e CREDENTIALS_PATH como fallback
-            for path in (os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'), CREDENTIALS_PATH):
-                if path and os.path.exists(path):
-                    credentials = service_account.Credentials.from_service_account_file(path, scopes=scopes)
-                    break
-        if credentials is None:
-            raise RuntimeError("Sem credenciais Google para Sheets")
-
-        gc = gspread.authorize(credentials)
-        sh = gc.open_by_key(SHEET_ID_ITENS_IMPORTADOS)
-        # Localiza a aba ItensImportados pelo gid (não por posição — protege contra reordenação)
-        ws = None
-        for w in sh.worksheets():
-            if getattr(w, 'id', None) == SHEET_GID_ITENS_IMPORTADOS:
-                ws = w
-                break
-        if ws is None:
-            ws = sh.get_worksheet(0)  # fallback
-        rows = ws.get_all_records()
-        codes: List[str] = []
-        cand_keys = ('COD_PRODUTO', 'Cod_Produto', 'CODIGO', 'Codigo', 'codigo_produto', 'CODIGO_PRODUTO')
-        for r in rows:
-            for k in cand_keys:
-                v = r.get(k)
-                if v not in (None, ''):
-                    codes.append(str(v).strip())
-                    break
-        _blacklist_cache["data"] = codes
-        _blacklist_cache["ts"] = now
-        logger.info(f"Blacklist S&OP atualizada do Google Sheets: {len(codes)} SKUs")
-        return codes
-    except Exception as e:
-        # ATENÇÃO: NÃO retornar IMPORTED_ITEM_CODES como fallback — esses 30 SKUs
-        # hardcoded em core/config.py NÃO refletem a aba ItensImportados real e
-        # excluem SKUs que o n8n inclui (ex: família 1040094x do dashboard de Fábrica),
-        # divergindo o Faturado/Carteira/Reservado do portal vs o n8n.
-        # Em caso de falha, retornar lista vazia preserva os totais (small over-include
-        # é preferível ao over-exclude do fallback hardcoded).
-        logger.error(
-            f"Falha ao ler blacklist 'ItensImportados' do Google Sheets — "
-            f"seguindo SEM blacklist (lista vazia). Configure GOOGLE_CREDENTIALS_JSON "
-            f"e compartilhe a planilha com a service account. Erro: {e}"
-        )
-        return []
+    codes: List[str] = [str(c).strip() for c in IMPORTED_ITEM_CODES]
+    _blacklist_cache["data"] = codes
+    _blacklist_cache["ts"] = now
+    logger.info(f"Blacklist S&OP (dummy): {len(codes)} SKUs")
+    return codes
 
 
 def _load_inactive_items() -> List[str]:
     """Lê a aba 'ItensInativos' do Google Sheets (mesma do nó FormataListaSql do n8n).
 
-    Cacheia em memoria por BLACKLIST_TTL_SECONDS. Em caso de falha, retorna lista vazia
-    (sem filtro), preservando o comportamento atual do dashboard.
+    [DUMMY] Fonte externa (Google Sheets) substituida por dados dummy deterministicos.
+    Cacheia em memoria por BLACKLIST_TTL_SECONDS. Retorna lista vazia (sem filtro),
+    preservando o comportamento atual do dashboard.
     """
     now = time.time()
     cached = _inactive_cache.get("data")
     if cached is not None and (now - _inactive_cache.get("ts", 0)) < BLACKLIST_TTL_SECONDS:
         return cached
 
-    try:
-        import gspread
-        from google.oauth2 import service_account
-        scopes = [
-            "https://www.googleapis.com/auth/spreadsheets.readonly",
-            "https://www.googleapis.com/auth/drive.readonly",
-        ]
-        credentials = None
-        creds_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
-        if creds_json:
-            info = json.loads(creds_json)
-            credentials = service_account.Credentials.from_service_account_info(info, scopes=scopes)
-        else:
-            # Tenta GOOGLE_APPLICATION_CREDENTIALS (env padrão Google SDK) e CREDENTIALS_PATH como fallback
-            for path in (os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'), CREDENTIALS_PATH):
-                if path and os.path.exists(path):
-                    credentials = service_account.Credentials.from_service_account_file(path, scopes=scopes)
-                    break
-        if credentials is None:
-            raise RuntimeError("Sem credenciais Google para Sheets")
-
-        gc = gspread.authorize(credentials)
-        sh = gc.open_by_key(SHEET_ID_ITENS_IMPORTADOS)
-        ws = None
-        # Localiza a worksheet pelo gid (ItensInativos)
-        for w in sh.worksheets():
-            if getattr(w, 'id', None) == SHEET_GID_ITENS_INATIVOS:
-                ws = w
-                break
-        if ws is None:
-            raise RuntimeError(f"Aba com gid {SHEET_GID_ITENS_INATIVOS} (ItensInativos) nao encontrada")
-
-        rows = ws.get_all_records()
-        codes: List[str] = []
-        cand_keys = ('CODIGO', 'Codigo', 'COD_PRODUTO', 'Cod_Produto', 'codigo_produto', 'CODIGO_PRODUTO')
-        for r in rows:
-            for k in cand_keys:
-                v = r.get(k)
-                if v not in (None, ''):
-                    codes.append(str(v).strip())
-                    break
-        _inactive_cache["data"] = codes
-        _inactive_cache["ts"] = now
-        logger.info(f"ItensInativos S&OP atualizado do Google Sheets: {len(codes)} SKUs")
-        return codes
-    except Exception as e:
-        logger.warning(f"Falha ao ler ItensInativos do Google Sheets (seguindo sem filtro): {e}")
-        return []
+    codes: List[str] = []
+    _inactive_cache["data"] = codes
+    _inactive_cache["ts"] = now
+    logger.info(f"ItensInativos S&OP (dummy): {len(codes)} SKUs")
+    return codes
 
 
 def get_bq_client():
-    """Reusa a mesma estrategia do modulo Importacao."""
-    from google.cloud import bigquery
-    from google.oauth2 import service_account
-    creds_json = os.environ.get('GOOGLE_CREDENTIALS_JSON')
-    if creds_json:
-        info = json.loads(creds_json)
-        credentials = service_account.Credentials.from_service_account_info(info)
-        return bigquery.Client(credentials=credentials, project=PROJECT_ID)
-    if CREDENTIALS_PATH and os.path.exists(CREDENTIALS_PATH):
-        try:
-            credentials = service_account.Credentials.from_service_account_file(CREDENTIALS_PATH)
-            return bigquery.Client(credentials=credentials, project=PROJECT_ID)
-        except Exception:
-            pass
-    return bigquery.Client()
+    """Reusa a mesma estrategia do modulo Importacao.
+
+    [DUMMY] BigQuery substituido por dados dummy deterministicos. Retorna None
+    (cliente nao e mais necessario — _bq_to_dict gera dados dummy a partir do SQL).
+    O app sobe SEM credenciais GCP.
+    """
+    return None
 
 
 # ============================================================================
@@ -674,17 +573,302 @@ def calcular_curva_abc(metas_resultado: List[dict], hist_abc: List[dict]) -> Lis
 # Endpoint principal
 # ============================================================================
 
+# ============================================================================
+# [DUMMY] Geradores deterministicos — substituem o BigQuery.
+# Preservam EXATAMENTE o shape (colunas) consumido pelo frontend e pelos
+# calculos de forecast/curva ABC. Cobrem os 12 meses de dummy.ANO_BASE (2026).
+# ============================================================================
+
+_DUMMY_ANO = dummy.ANO_BASE
+_DUMMY_REGIONAIS = ["SUDESTE", "SUL", "NORDESTE", "CENTRO-OESTE", "NORTE"]
+
+
+def _dummy_skus():
+    """Pool deterministico de SKUs (familia '104%'), com descricao/unidade/familia.
+    Reusa dummy.PRODUTOS (todos comecam com '104') e deriva a familia da categoria."""
+    out = []
+    for cod, desc, un, cat in dummy.PRODUTOS:
+        out.append({
+            "CODIGO_PRODUTO": cod,
+            "DESCRICAO_PRODUTO": desc,
+            "UNIDADE_MEDIDA": un,
+            "FAMILIA": cat.upper(),
+        })
+    return out
+
+
+def _dummy_historico(inactive_codes: Optional[List[str]] = None) -> List[dict]:
+    """Shape de _build_sql_vendas_hist_proxy: Regional, Familia, Mes_Numerico,
+    CODIGO_PRODUTO, DESCRICAO_PRODUTO, UNIDADE_MEDIDA, valor_bruto_historico,
+    share_mensal, preco_medio."""
+    inativos = set(str(c).strip() for c in (inactive_codes or []))
+    skus = [s for s in _dummy_skus() if s["CODIGO_PRODUTO"] not in inativos]
+    rows: List[dict] = []
+    # Agrega valor por (regional, familia, mes) para calcular share_mensal coerente.
+    grupos: Dict[tuple, list] = {}
+    for reg in _DUMMY_REGIONAIS:
+        for s in skus:
+            r = dummy.rng("sop_hist", reg, s["CODIGO_PRODUTO"])
+            preco = round(r.uniform(15.0, 320.0), 2)
+            for mes in range(1, 13):
+                rm = dummy.rng("sop_hist_mes", reg, s["CODIGO_PRODUTO"], mes)
+                valor_bruto = round(rm.uniform(500.0, 80000.0), 2)
+                row = {
+                    "Regional": reg,
+                    "Familia": s["FAMILIA"],
+                    "Mes_Numerico": mes,
+                    "CODIGO_PRODUTO": s["CODIGO_PRODUTO"],
+                    "DESCRICAO_PRODUTO": s["DESCRICAO_PRODUTO"],
+                    "UNIDADE_MEDIDA": s["UNIDADE_MEDIDA"],
+                    "valor_bruto_historico": valor_bruto,
+                    "share_mensal": 0.0,  # preenchido abaixo
+                    "preco_medio": preco,
+                }
+                rows.append(row)
+                grupos.setdefault((reg, s["FAMILIA"], mes), []).append(row)
+    # share_mensal = valor_bruto / soma do grupo (Regional, Familia, Mes)
+    for grp in grupos.values():
+        total = sum(x["valor_bruto_historico"] for x in grp) or 1.0
+        for x in grp:
+            x["share_mensal"] = round(x["valor_bruto_historico"] / total, 6)
+    return rows
+
+
+def _dummy_realizado() -> List[dict]:
+    """Shape SQL_REALIZADO_ANO_ATUAL: Tipo, Codigo, Ano, Mes, Qtd_Real."""
+    rows: List[dict] = []
+    for tipo in ("Venda", "Producao"):
+        for s in _dummy_skus():
+            for mes in range(1, 13):
+                r = dummy.rng("sop_real", tipo, s["CODIGO_PRODUTO"], mes)
+                rows.append({
+                    "Tipo": tipo,
+                    "Codigo": s["CODIGO_PRODUTO"],
+                    "Ano": _DUMMY_ANO,
+                    "Mes": mes,
+                    "Qtd_Real": float(r.randint(10, 1200)),
+                })
+    return rows
+
+
+def _dummy_estoque() -> List[dict]:
+    """Shape SQL_ESTOQUE: Codigo, Est_Fabrica, Est_Log_Bruto, Est_Log_Reserva, Est_Log_Disp."""
+    rows: List[dict] = []
+    for s in _dummy_skus():
+        r = dummy.rng("sop_estoque", s["CODIGO_PRODUTO"])
+        bruto = float(r.randint(0, 5000))
+        reserva = float(r.randint(0, int(bruto) if bruto else 1))
+        rows.append({
+            "Codigo": s["CODIGO_PRODUTO"],
+            "Est_Fabrica": float(r.randint(0, 3000)),
+            "Est_Log_Bruto": bruto,
+            "Est_Log_Reserva": reserva,
+            "Est_Log_Disp": round(bruto - reserva, 2),
+        })
+    return rows
+
+
+def _dummy_ops(chave: str, com_apontamento: bool) -> List[dict]:
+    """Shape SQL_OPS_HIST / SQL_OPS_ABERTO: Codigo, Numero_OP, Ano_Emissao,
+    Mes_Emissao, Data_Emissao_Full, Ultimo_Apontamento, Qtd_OP_Planejada,
+    Qtd_OP_Realizada, Saldo_A_Produzir. Saldo_A_Produzir > 0 (paridade com HAVING)."""
+    rows: List[dict] = []
+    skus = _dummy_skus()
+    # 2 OPs por SKU, datas cobrindo os 12 meses de 2026.
+    datas = dummy.datas_no_ano(max(24, len(skus) * 2), _DUMMY_ANO, chave)
+    i = 0
+    for s in skus:
+        for _ in range(2):
+            d = datas[i % len(datas)]
+            i += 1
+            r = dummy.rng(chave, s["CODIGO_PRODUTO"], i)
+            planejada = float(r.randint(200, 2000))
+            realizada = float(r.randint(0, int(planejada) - 1))
+            saldo = round(planejada - realizada, 2)
+            if saldo <= 0:
+                saldo = round(planejada, 2)
+            dt_emissao = datetime(d.year, d.month, d.day)
+            rows.append({
+                "Codigo": s["CODIGO_PRODUTO"],
+                "Numero_OP": f"OP{_DUMMY_ANO}{i:05d}",
+                "Ano_Emissao": d.year,
+                "Mes_Emissao": d.month,
+                "Data_Emissao_Full": dt_emissao.strftime("%Y-%m-%d %H:%M:%S"),
+                "Ultimo_Apontamento": (dt_emissao.strftime("%Y-%m-%d %H:%M:%S")
+                                       if com_apontamento else None),
+                "Qtd_OP_Planejada": planejada,
+                "Qtd_OP_Realizada": realizada,
+                "Saldo_A_Produzir": saldo,
+            })
+    rows.sort(key=lambda x: x["Data_Emissao_Full"], reverse=True)
+    return rows
+
+
+def _dummy_faturamento() -> List[dict]:
+    """Shape SQL_FATURAMENTO_ANO_ATUAL: Codigo, Ano, Mes, Qtd_Faturada."""
+    rows: List[dict] = []
+    for s in _dummy_skus():
+        for mes in range(1, 13):
+            r = dummy.rng("sop_fat", s["CODIGO_PRODUTO"], mes)
+            rows.append({
+                "Codigo": s["CODIGO_PRODUTO"],
+                "Ano": _DUMMY_ANO,
+                "Mes": mes,
+                "Qtd_Faturada": float(r.randint(5, 900)),
+            })
+    return rows
+
+
+def _dummy_carteira() -> List[dict]:
+    """Shape SQL_CARTEIRA: Codigo, Ano_Ref, Mes_Ref, Qtd_Carteira (>0)."""
+    rows: List[dict] = []
+    for s in _dummy_skus():
+        for mes in range(1, 13):
+            r = dummy.rng("sop_cart", s["CODIGO_PRODUTO"], mes)
+            rows.append({
+                "Codigo": s["CODIGO_PRODUTO"],
+                "Ano_Ref": _DUMMY_ANO,
+                "Mes_Ref": mes,
+                "Qtd_Carteira": float(r.randint(1, 600)),
+            })
+    return rows
+
+
+def _dummy_detalhe() -> List[dict]:
+    """Shape SQL_DETALHE_PEDIDOS: Codigo, Pedido, Cliente, Emissao, Entrega,
+    EmissaoOriginal, Saldo. Datas como string (paridade com SAFE_CAST AS STRING)."""
+    rows: List[dict] = []
+    skus = _dummy_skus()
+    # Pedidos espalhados pelos 12 meses; alguns atrasados (entrega no passado).
+    datas = dummy.datas_no_ano(60, _DUMMY_ANO, "sop_detalhe")
+    for idx, d in enumerate(datas):
+        r = dummy.rng("sop_detalhe_row", idx)
+        s = skus[idx % len(skus)]
+        cliente = dummy.escolher(r, dummy.CLIENTES)
+        emissao = datetime(d.year, d.month, d.day)
+        # entrega = emissao + alguns dias (alguns ja vencidos no ano)
+        entrega = emissao + timedelta(days=r.randint(-30, 20))
+        rows.append({
+            "Codigo": s["CODIGO_PRODUTO"],
+            "Pedido": f"PV{_DUMMY_ANO}{idx:05d}",
+            "Cliente": cliente,
+            "Emissao": emissao.strftime("%Y-%m-%d %H:%M:%S"),
+            "Entrega": entrega.strftime("%Y-%m-%d %H:%M:%S"),
+            "EmissaoOriginal": emissao.strftime("%Y-%m-%d %H:%M:%S"),
+            "Saldo": float(r.randint(1, 400)),
+        })
+    rows.sort(key=lambda x: x["Entrega"])
+    return rows
+
+
+def _dummy_base_abc() -> List[dict]:
+    """Shape SQL_BASE_ABC: CODIGO_PRODUTO, Descricao, Familia, Valor_2025.
+    Ordenado por Valor_2025 desc (paridade com ORDER BY 4 DESC)."""
+    rows: List[dict] = []
+    for s in _dummy_skus():
+        r = dummy.rng("sop_abc", s["CODIGO_PRODUTO"])
+        rows.append({
+            "CODIGO_PRODUTO": s["CODIGO_PRODUTO"],
+            "Descricao": s["DESCRICAO_PRODUTO"],
+            "Familia": s["FAMILIA"],
+            "Valor_2025": round(r.uniform(50000.0, 2000000.0), 2),
+        })
+    rows.sort(key=lambda x: x["Valor_2025"], reverse=True)
+    return rows
+
+
+def _dummy_indicadores() -> List[dict]:
+    """Shape SQL_INDICADORES: Codigo, Media_Venda_44Dias, Media_Prod_44Dias."""
+    rows: List[dict] = []
+    for s in _dummy_skus():
+        r = dummy.rng("sop_ind", s["CODIGO_PRODUTO"])
+        rows.append({
+            "Codigo": s["CODIGO_PRODUTO"],
+            "Media_Venda_44Dias": round(r.uniform(1.0, 80.0), 2),
+            "Media_Prod_44Dias": round(r.uniform(1.0, 80.0), 2),
+        })
+    return rows
+
+
+def _dummy_metas() -> List[dict]:
+    """Shape SQL_PREV_COMERCIAL (Postgres): regional_meta, familia_meta, mes_meta,
+    data_original, valor_meta_total. Regionais/familias batem com _dummy_historico
+    para o forecast top-down gerar resultados em TODOS os 12 meses de 2026."""
+    familias = sorted({s["FAMILIA"] for s in _dummy_skus()})
+    rows: List[dict] = []
+    for reg in _DUMMY_REGIONAIS:
+        for fam in familias:
+            for mes in range(1, 13):
+                r = dummy.rng("sop_meta", reg, fam, mes)
+                d = date(_DUMMY_ANO, mes, 1)
+                rows.append({
+                    "regional_meta": reg,
+                    "familia_meta": fam,
+                    "mes_meta": mes,
+                    "data_original": d.strftime("%Y-%m-%d"),
+                    "valor_meta_total": round(r.uniform(50000.0, 800000.0), 2),
+                })
+    return rows
+
+
+def _dummy_otmz() -> List[dict]:
+    """Shape SQL_OTMZ_AI (Postgres): codigo_produto, descricao_produto,
+    sequencia_producao, quantidade_necessaria, total_item,
+    contador_pedidos_atendidos, pedidos_atendidos."""
+    rows: List[dict] = []
+    for seq, s in enumerate(_dummy_skus(), start=1):
+        r = dummy.rng("sop_otmz", s["CODIGO_PRODUTO"])
+        n_ped = r.randint(1, 6)
+        peds = [f"PV{_DUMMY_ANO}{r.randint(0, 59):05d}" for _ in range(n_ped)]
+        rows.append({
+            "codigo_produto": s["CODIGO_PRODUTO"],
+            "descricao_produto": s["DESCRICAO_PRODUTO"],
+            "sequencia_producao": seq,
+            "quantidade_necessaria": float(r.randint(50, 3000)),
+            "total_item": round(r.uniform(1000.0, 90000.0), 2),
+            "contador_pedidos_atendidos": n_ped,
+            "pedidos_atendidos": ', '.join(peds),
+        })
+    return rows
+
+
+# Mapeia cada SQL constante para o gerador dummy equivalente (dispatch por identidade
+# de objeto string nao e confiavel — usamos marcadores textuais unicos de cada SQL).
 def _bq_to_dict(client, sql: str) -> List[dict]:
-    """Roda query e converte para lista de dicts simples."""
+    """[DUMMY] Substitui a execucao no BigQuery: identifica a query pelo conteudo
+    e devolve dados dummy deterministicos com o MESMO shape de colunas."""
     try:
-        result = client.query(sql).result(timeout=120)
-        rows = []
-        for row in result:
-            rows.append({k: (v if v is None or isinstance(v, (str, int, float, bool)) else str(v))
-                         for k, v in dict(row).items()})
-        return rows
+        if "valor_bruto_historico" in sql and "share_mensal" in sql:
+            # _build_sql_vendas_hist_proxy — extrai inactive_codes do NOT IN (...)
+            inactive = None
+            if "CODIGO_PRODUTO NOT IN (" in sql:
+                import re as _re
+                m = _re.search(r"CODIGO_PRODUTO NOT IN \(([^)]*)\)", sql)
+                if m:
+                    inactive = [c.strip().strip("'") for c in m.group(1).split(",") if c.strip()]
+            return _dummy_historico(inactive)
+        if "'Venda' as Tipo" in sql or "'Producao' as Tipo" in sql:
+            return _dummy_realizado()
+        if "CombinedEstoque" in sql:
+            return _dummy_estoque()
+        if "ApontamentosProducao" in sql and "INTERVAL 15 DAY" in sql:
+            return _dummy_ops("sop_ops_hist", com_apontamento=True)
+        if "opemaberto" in sql:
+            return _dummy_ops("sop_ops_aberto", com_apontamento=False)
+        if "Qtd_Faturada" in sql:
+            return _dummy_faturamento()
+        if "Qtd_Carteira" in sql:
+            return _dummy_carteira()
+        if "Metas_por_faturamento" in sql:
+            return _dummy_detalhe()
+        if "Valor_2025" in sql:
+            return _dummy_base_abc()
+        if "Media_Venda_44Dias" in sql or "vendas_recentes" in sql:
+            return _dummy_indicadores()
+        logger.warning("SQL dummy nao mapeado; retornando vazio.")
+        return []
     except Exception as e:
-        logger.error(f"Erro em BQ: {e}")
+        logger.error(f"Erro em BQ (dummy): {e}")
         return []
 
 
@@ -725,28 +909,11 @@ def get_sop_dashboard_data(
     base_abc = _bq_to_dict(bq, SQL_BASE_ABC)
     indicadores = _bq_to_dict(bq, SQL_INDICADORES)
 
-    # 2. Postgres (2 queries)
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cur:
-            cur.execute(SQL_PREV_COMERCIAL)
-            cols = [c[0] for c in cur.description]
-            metas = [dict(zip(cols, r)) for r in cur.fetchall()]
-            for m in metas:
-                if m.get('data_original') is not None:
-                    m['data_original'] = str(m['data_original'])
-                if m.get('valor_meta_total') is not None:
-                    m['valor_meta_total'] = float(m['valor_meta_total'])
-
-        with conn.cursor() as cur:
-            cur.execute(SQL_OTMZ_AI)
-            cols = [c[0] for c in cur.description]
-            otmz = [dict(zip(cols, r)) for r in cur.fetchall()]
-            for row in otmz:
-                if isinstance(row.get('pedidos_atendidos'), list):
-                    row['pedidos_atendidos'] = ', '.join(str(x) for x in row['pedidos_atendidos'])
-    finally:
-        conn.close()
+    # 2. Postgres (2 queries) — [DUMMY] tabelas previsao_comercial_sop e otmz_prod_sop
+    #    sao alimentadas por pipelines externos; substituidas por dados dummy
+    #    deterministicos com o MESMO shape de colunas.
+    metas = _dummy_metas()
+    otmz = _dummy_otmz()
 
     # 3. Forecast Top-Down + Curva ABC (no backend)
     resultados = calcular_forecast_top_down(historico, metas)
