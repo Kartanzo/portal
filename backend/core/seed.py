@@ -139,6 +139,255 @@ def ensure_bootstrap_tables() -> None:
         cur.close()
         conn.close()
 
+    # Tabelas "assumidas" (referenciadas no código mas nunca criadas por nenhum CREATE TABLE).
+    # Roda SEMPRE no startup, depois das tabelas-base, para o app subir em schema vazio.
+    ensure_assumed_tables()
+
+
+# --------------------------------------------------------------------------- #
+# Tabelas "assumidas" — referenciadas pelo código mas nunca criadas (roda SEMPRE)
+# --------------------------------------------------------------------------- #
+# DDLs reconstruídas a partir do uso real (SELECT/INSERT/UPDATE/WHERE/ORDER BY) no código.
+# FKs para users(id) são UUID; FKs para tabelas SERIAL (ticket_categories) são INTEGER.
+_ASSUMED_TABLES = [
+    # notifications — users.py get_notifications: SELECT id,user_id,title,message,link,is_read,
+    # created_at; tickets.py/email.py INSERT (user_id,title,message,link); UPDATE is_read.
+    ("notifications", """
+        CREATE TABLE IF NOT EXISTS notifications (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(255),
+            message TEXT,
+            link TEXT,
+            is_read BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """),
+    # ticket_updates — tickets.py: histórico/mensagens de chamados (distinta de
+    # inter_sector_ticket_updates). INSERT (ticket_id,user_id,message,attachment_name,
+    # attachment_path,is_system,created_at); SELECT join users; ORDER BY created_at.
+    ("ticket_updates", """
+        CREATE TABLE IF NOT EXISTS ticket_updates (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            ticket_id UUID NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+            user_id UUID REFERENCES users(id),
+            message TEXT,
+            attachment_name TEXT,
+            attachment_path TEXT,
+            is_system BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """),
+    # ticket_participants — tickets.py: participantes de um chamado (distinta de
+    # inter_sector_ticket_participants). INSERT (ticket_id,user_id,added_by); SELECT user_id;
+    # DELETE por (ticket_id,user_id).
+    ("ticket_participants", """
+        CREATE TABLE IF NOT EXISTS ticket_participants (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            ticket_id UUID NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+            user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            added_by UUID REFERENCES users(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(ticket_id, user_id)
+        )
+    """),
+    # action_plan_items — action_plans.py: itens de um plano de ação. INSERT com action_plan_id,
+    # actions, expected_result, projects, responsible (array), status, schedule_start/end,
+    # observation, budget_planned/actual, hours_planned/actual, roi_percentage,
+    # stakeholder_satisfaction, blocked_by_user_id, waiting_for_return (array), created_by,
+    # is_active, updated_at; SELECT join action_plans/users.
+    ("action_plan_items", """
+        CREATE TABLE IF NOT EXISTS action_plan_items (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            action_plan_id UUID REFERENCES action_plans(id) ON DELETE CASCADE,
+            actions TEXT,
+            expected_result TEXT,
+            projects TEXT,
+            responsible TEXT[],
+            status VARCHAR(50),
+            schedule_start DATE,
+            schedule_end DATE,
+            observation TEXT,
+            budget_planned NUMERIC,
+            budget_actual NUMERIC,
+            hours_planned NUMERIC,
+            hours_actual NUMERIC,
+            roi_percentage NUMERIC,
+            stakeholder_satisfaction NUMERIC,
+            blocked_by_user_id UUID REFERENCES users(id),
+            waiting_for_return TEXT[],
+            created_by UUID REFERENCES users(id),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """),
+    # action_plan_history — action_plans.py: histórico de alterações de um item.
+    # INSERT (item_id,user_id,change_summary); SELECT join users; ORDER BY created_at.
+    ("action_plan_history", """
+        CREATE TABLE IF NOT EXISTS action_plan_history (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            item_id UUID REFERENCES action_plan_items(id) ON DELETE CASCADE,
+            user_id UUID REFERENCES users(id),
+            change_summary TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """),
+    # dre2025_bases — dre2025.py: bases salvas do DRE 2025. INSERT (name,dre_data,sheets_data,
+    # created_by); SELECT id,name,created_at, join users; UPDATE is_active/observations.
+    ("dre2025_bases", """
+        CREATE TABLE IF NOT EXISTS dre2025_bases (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name VARCHAR(255),
+            dre_data JSONB,
+            sheets_data JSONB,
+            observations TEXT,
+            created_by UUID REFERENCES users(id),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """),
+    # importation_history — importation.py: histórico de importações. INSERT (filename,
+    # uploaded_by,items_data); SELECT id,filename,upload_date, join users, items_data;
+    # UPDATE is_active.
+    ("importation_history", """
+        CREATE TABLE IF NOT EXISTS importation_history (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            filename TEXT,
+            uploaded_by UUID REFERENCES users(id),
+            items_data JSONB,
+            upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            is_active BOOLEAN DEFAULT TRUE
+        )
+    """),
+    # implementation_schedule_attachments — implementation.py: anexos de um item de cronograma.
+    # INSERT (implementation_schedule_item_id,file_name,file_path,file_size,uploaded_by);
+    # SELECT id,file_name,file_path,file_size,created_at, join users.
+    ("implementation_schedule_attachments", """
+        CREATE TABLE IF NOT EXISTS implementation_schedule_attachments (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            implementation_schedule_item_id UUID REFERENCES implementation_schedule_items(id) ON DELETE CASCADE,
+            file_name TEXT,
+            file_path TEXT,
+            file_size BIGINT,
+            uploaded_by UUID REFERENCES users(id),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """),
+    # implementation_schedule_history — implementation.py: histórico de um item de cronograma.
+    # SELECT user_id,change_summary,created_at WHERE implementation_schedule_item_id.
+    ("implementation_schedule_history", """
+        CREATE TABLE IF NOT EXISTS implementation_schedule_history (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            implementation_schedule_item_id UUID REFERENCES implementation_schedule_items(id) ON DELETE CASCADE,
+            user_id UUID REFERENCES users(id),
+            change_summary TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """),
+    # sector_ticket_categories — sectors.py: categorias de chamado por setor. INSERT (sector,
+    # name,created_by,min_chars); SELECT id,sector,name,created_at,min_chars; id usado como
+    # str() -> UUID; UPDATE name/min_chars/is_active.
+    ("sector_ticket_categories", """
+        CREATE TABLE IF NOT EXISTS sector_ticket_categories (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            sector VARCHAR(255),
+            name VARCHAR(255),
+            min_chars INTEGER DEFAULT 0,
+            created_by UUID REFERENCES users(id),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """),
+    # sector_ticket_subcategories — sectors.py: subcategorias por categoria de setor. INSERT
+    # (category_id,name,min_chars,require_attachment); category_id usado como str() -> UUID
+    # (FK para sector_ticket_categories); SELECT join, UPDATE is_active.
+    ("sector_ticket_subcategories", """
+        CREATE TABLE IF NOT EXISTS sector_ticket_subcategories (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            category_id UUID REFERENCES sector_ticket_categories(id) ON DELETE CASCADE,
+            name VARCHAR(255),
+            min_chars INTEGER DEFAULT 0,
+            require_attachment BOOLEAN DEFAULT FALSE,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """),
+    # ticket_subcategories — category_controller.py: subcategorias da categoria legada
+    # (ticket_categories é SERIAL -> category_id INTEGER; id usado sem str() -> SERIAL).
+    # SELECT id,category_id,name,created_at; INSERT (category_id,name); DELETE por id.
+    ("ticket_subcategories", """
+        CREATE TABLE IF NOT EXISTS ticket_subcategories (
+            id SERIAL PRIMARY KEY,
+            category_id INTEGER REFERENCES ticket_categories(id) ON DELETE CASCADE,
+            name VARCHAR(150) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """),
+    # financeiro_data_orcado — financeiro.py: linhas de dados orçados (normalmente carregadas
+    # via pandas to_sql; num schema vazio os SELECTs rodam antes do 1º upload). Colunas usadas:
+    # base_id, grupo, conta_contabil, descricao_conta, competencia, departamento, valor.
+    ("financeiro_data_orcado", """
+        CREATE TABLE IF NOT EXISTS financeiro_data_orcado (
+            id SERIAL PRIMARY KEY,
+            base_id UUID REFERENCES financeiro_bases(id) ON DELETE CASCADE,
+            grupo TEXT,
+            conta_contabil TEXT,
+            descricao_conta TEXT,
+            competencia TEXT,
+            departamento TEXT,
+            valor NUMERIC
+        )
+    """),
+    # financeiro_data_realizado — financeiro.py: linhas de dados realizados (mesmas colunas
+    # de financeiro_data_orcado; SELECT grupo,conta_contabil,descricao_conta,competencia,valor
+    # WHERE base_id).
+    ("financeiro_data_realizado", """
+        CREATE TABLE IF NOT EXISTS financeiro_data_realizado (
+            id SERIAL PRIMARY KEY,
+            base_id UUID REFERENCES financeiro_bases(id) ON DELETE CASCADE,
+            grupo TEXT,
+            conta_contabil TEXT,
+            descricao_conta TEXT,
+            competencia TEXT,
+            departamento TEXT,
+            valor NUMERIC
+        )
+    """),
+]
+
+
+def ensure_assumed_tables() -> None:
+    """Cria todas as tabelas que o código referencia mas nunca cria via CREATE TABLE.
+
+    Permite o app subir num schema 100% vazio (ex.: portal_demo). Cada CREATE roda em
+    transação própria (commit/rollback isolado): se uma falhar (ex.: tabela-pai ausente),
+    loga e segue para as demais — nunca derruba o startup.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        try:
+            cur.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
+            conn.commit()
+        except Exception as e:
+            logger.warning(f"pgcrypto nao instalado ({e}); assumindo gen_random_uuid nativo")
+            conn.rollback()
+
+        criadas = 0
+        for nome, ddl in _ASSUMED_TABLES:
+            try:
+                cur.execute(ddl)
+                conn.commit()
+                criadas += 1
+            except Exception as e:
+                conn.rollback()
+                logger.warning(f"ensure_assumed_tables: {nome} falhou: {e}")
+        logger.info(f"ensure_assumed_tables OK: {criadas}/{len(_ASSUMED_TABLES)} tabelas garantidas.")
+    finally:
+        cur.close()
+        conn.close()
+
 
 # --------------------------------------------------------------------------- #
 # Seed de dados dummy (roda só com SEED_DUMMY ligado)
