@@ -255,7 +255,7 @@ const ImportacaoMoq: React.FC<{ user: any }> = ({ user }) => {
                             <div>
                                 <p className="font-bold text-amber-700 dark:text-amber-400 mb-1">📌 Coluna "Código" — aceita qualquer um destes nomes:</p>
                                 <div className="flex flex-wrap gap-1">
-                                    {['ITEM NO', 'Código', 'Codigo', 'Codigo 3LACKD', 'Cod Produto', 'Cod Prod'].map(n => (
+                                    {['ITEM NO', 'Código', 'Codigo', 'Codigo EMPRESA', 'Cod Produto', 'Cod Prod'].map(n => (
                                         <code key={n} className="px-1.5 py-0.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-[10px] font-mono">{n}</code>
                                     ))}
                                 </div>

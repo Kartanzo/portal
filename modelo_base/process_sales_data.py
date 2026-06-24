@@ -16,7 +16,7 @@ else:
     # Running as script
     FOLDER_PATH = os.path.dirname(os.path.abspath(__file__))
 
-CREDENTIALS_FILE = "projeto-rpa-blackd-2023-16b15891f73c.json"
+CREDENTIALS_FILE = "projeto-rpa-empresa-2023-16b15891f73c.json"
 # Credentials are now expected in the SAME folder as the executable/script
 CREDENTIALS_PATH = os.path.join(FOLDER_PATH, CREDENTIALS_FILE)
 CAMINHO_TXT_PATH = os.path.join(FOLDER_PATH, "caminho.txt")
@@ -179,7 +179,7 @@ def download_data(config):
     # Fetch explicit columns as requested
     query_rel_logistica = f"""
         SELECT NOTA_FISCAL, EMISSAO_NOTA_FISCAL, PEDIDO_VENDA 
-        FROM `projeto-rpa-blackd-2023.VENDAS.RelatorioLogistica` 
+        FROM `projeto-rpa-empresa-2023.VENDAS.RelatorioLogistica` 
         WHERE EMISSAO_NOTA_FISCAL >= '{start_date}'
     """
     relatorio_logistica_df = bq_client.query(query_rel_logistica).to_dataframe(create_bqstorage_client=False)
@@ -1234,8 +1234,8 @@ def finalize_and_upload(df):
             df[col] = pd.to_datetime(df[col], errors='coerce')
             
     # 4. Upload to BigQuery
-    table_id = "projeto-rpa-blackd-2023.VENDAS.Metas_por_faturamento"
-    project_id = "projeto-rpa-blackd-2023"
+    table_id = "projeto-rpa-empresa-2023.VENDAS.Metas_por_faturamento"
+    project_id = "projeto-rpa-empresa-2023"
     
     print(f"Uploading {len(df)} rows to BigQuery table: {table_id}...")
     

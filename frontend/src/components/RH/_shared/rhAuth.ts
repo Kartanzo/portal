@@ -11,7 +11,7 @@ export interface RhUser {
 
 export const getCurrentUser = (): RhUser | null => {
     try {
-        return JSON.parse(sessionStorage.getItem('blackd_user') || 'null');
+        return JSON.parse(sessionStorage.getItem('empresa_user') || 'null');
     } catch {
         return null;
     }

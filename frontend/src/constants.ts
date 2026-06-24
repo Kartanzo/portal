@@ -60,7 +60,7 @@ export const STRATEGIC_OBJECTIVES = [
     "Estrutura equipe Supply",
     "Melhorar a comunicação no PDV",
     "Calendário de Ações Comerciais",
-    "Marketing da Empresa:  Fortalecer a presença institucional da 3LACKD, garantindo comunicação profissional, padronizada e eficiente em todos os pontos de contato; aprimorar materiais comerciais e de PDV; modernizar a identidade visual; ampliar a presença digital; e criar processos organizados que apoiem representantes, vendas e lançamentos de produtos.",
+    "Marketing da Empresa:  Fortalecer a presença institucional da EMPRESA, garantindo comunicação profissional, padronizada e eficiente em todos os pontos de contato; aprimorar materiais comerciais e de PDV; modernizar a identidade visual; ampliar a presença digital; e criar processos organizados que apoiem representantes, vendas e lançamentos de produtos.",
     "Lançamento de Produtos / Importação",
     "AE (Acompanhamento e Efetividade)",
     "PDI's (Desenvolver e Reter)",

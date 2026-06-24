@@ -73,7 +73,7 @@ def _load_moq_map() -> Dict[str, float]:
         # 1) coluna de código
         col_cod = None
         for c, cn in cols_norm.items():
-            if cn in ('codigo', 'codigoblackd', 'codprod', 'codproduto', 'codigoproduto'):
+            if cn in ('codigo', 'codigoempresa', 'codprod', 'codproduto', 'codigoproduto'):
                 col_cod = c; break
         if col_cod is None:
             print(f"[importation_v2] MOQ: coluna de código não encontrada. Disponíveis: {list(df.columns)}")
@@ -178,7 +178,7 @@ def _load_container_params() -> Dict[str, Dict[str, float]]:
                 if cn in opts:
                     return c
             return None
-        col_cod = find({'codigo', 'codigoblackd', 'codprod', 'codproduto', 'codigoproduto', 'itemno'})
+        col_cod = find({'codigo', 'codigoempresa', 'codprod', 'codproduto', 'codigoproduto', 'itemno'})
         col_unit_ctn = find({'unitctn', 'unitsctn', 'unidadescaixa', 'pcsctn'})
         col_cbm = find({'cbm', 'volumecbm', 'cbmun'})
         col_price = find({'price', 'preco', 'unitprice', 'precounitario', 'upreco'})
@@ -915,7 +915,7 @@ def create_versao(body: VersaoIn, user_id: Optional[str] = Depends(get_user_id_f
 CAPACIDADES_CONTAINER = {
     "20'":   28.0,   # 20 pés standard
     "40'":   58.0,   # 40 pés standard
-    "40HC":  68.0,   # 40 pés high cube (padrão 3LACKD)
+    "40HC":  68.0,   # 40 pés high cube (padrão EMPRESA)
     "45HC":  86.0,   # 45 pés high cube
 }
 
@@ -1673,7 +1673,7 @@ async def upload_moq_xlsx(
     user_id: Optional[str] = Depends(get_user_id_from_session),
 ):
     """Lê uma planilha de 1 aba e faz upsert em massa.
-    Procura colunas: ITEM NO / Código / Codigo 3LACKD  +  MOQ.
+    Procura colunas: ITEM NO / Código / Codigo EMPRESA  +  MOQ.
     Descrição opcional via DESCRIPTION / Descrição.
     """
     if not check_module_permission(user_id or "", MODULE_ID, min_permission="can_edit"):
@@ -1715,7 +1715,7 @@ async def upload_moq_xlsx(
                 return c
         return None
 
-    col_cod = find_col(df, {'itemno', 'codigo', 'codigoblackd', 'codprod', 'codproduto', 'codigoproduto'})
+    col_cod = find_col(df, {'itemno', 'codigo', 'codigoempresa', 'codprod', 'codproduto', 'codigoproduto'})
     col_moq = find_col(df, {'moq', 'lotemin', 'loteminimo', 'qtdmin', 'qtdminima', 'minorderquantity'})
     col_desc = find_col(df, {'description', 'descricao', 'descricaoproduto', 'descricaodoproduto'})
     # Colunas extras (planilha completa)

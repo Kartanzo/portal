@@ -1,6 +1,6 @@
 /**
  * Comissão (Financeiro) — controle de comissões dos vendedores.
- * Navegação por MENU LATERAL em árvore: ANO -> MÊS -> EMPRESA (3LACKD BR / SP),
+ * Navegação por MENU LATERAL em árvore: ANO -> MÊS -> EMPRESA (EMPRESA BR / SP),
  * tudo derivado da REFERENCIA (que identifica o relatório). Ações escopadas pela referência.
  * Validação no nosso banco; PDFs antigos do Drive, novos por upload.
  */
@@ -48,7 +48,7 @@ function cell(v?: string): string {
   return (!s || s.toLowerCase() === 'nan') ? '—' : v;
 }
 
-// Extrai mês/ano/empresa da REFERENCIA (ex.: "RELATÓRIO COMISSÃO - 01.2025 - 3LACKD SP.XLS")
+// Extrai mês/ano/empresa da REFERENCIA (ex.: "RELATÓRIO COMISSÃO - 01.2025 - EMPRESA SP.XLS")
 function parseRef(ref: string): { ano: string; mm: string; empresa: string; label: string } {
   const semExt = ref.replace(/\.(xls|xlsx|csv)\s*$/i, '');
   const dt = semExt.match(/(\d{1,2})[.\/](\d{4})/);
@@ -532,13 +532,13 @@ const Comissao: React.FC<{ user?: any }> = () => {
               <ul className="text-xs list-disc pl-5 space-y-0.5">
                 <li>Assunto conterá <b>{refSel.ano}-{refSel.mm}-{refSel.empresa}</b></li>
                 <li><b>Para:</b> e-mail primário do vendedor</li>
-                <li><b>Cópia:</b> e-mail secundário{ccFixos ? ' + comissao@blackd.com.br + vendas@blackd.com.br' : ''}</li>
+                <li><b>Cópia:</b> e-mail secundário{ccFixos ? ' + comissao@empresa.com.br + vendas@empresa.com.br' : ''}</li>
                 <li>O <b>PDF</b> do vendedor vai anexado</li>
                 <li>{sel.size > 0 ? 'Apenas os vendedores selecionados (e elegíveis)' : 'Todos os aprovados com PDF desta referência'}</li>
               </ul>
               <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mt-1 cursor-pointer">
                 <input type="checkbox" checked={ccFixos} onChange={e => setCcFixos(e.target.checked)} className="cursor-pointer" />
-                Enviar cópia para <b>comissao@</b> e <b>vendas@</b> blackd.com.br
+                Enviar cópia para <b>comissao@</b> e <b>vendas@</b> empresa.com.br
               </label>
               <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 mt-1 cursor-pointer">
                 <input type="checkbox" checked={reenviar} onChange={e => setReenviar(e.target.checked)} className="cursor-pointer" />

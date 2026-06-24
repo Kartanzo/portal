@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 
 MODULE_ID = "programacao"
 
-_BQ_KEY_FILE = os.path.join(os.path.dirname(__file__), "..", "projeto-rpa-blackd-2023-16b15891f73c.json")
-_BQ_PROJECT = "projeto-rpa-blackd-2023"
-_OP_TABELA = "projeto-rpa-blackd-2023.VIEW.view_ORDEM_PRODUCAO"
+_BQ_KEY_FILE = os.path.join(os.path.dirname(__file__), "..", "projeto-rpa-empresa-2023-16b15891f73c.json")
+_BQ_PROJECT = "projeto-rpa-empresa-2023"
+_OP_TABELA = "projeto-rpa-empresa-2023.VIEW.view_ORDEM_PRODUCAO"
 
 
 def _bq_client():

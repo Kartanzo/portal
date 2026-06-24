@@ -28,7 +28,7 @@ def get_client():
         info = json.loads(creds_json)
         creds = service_account.Credentials.from_service_account_info(info)
         return bigquery.Client(project=PROJECT_ID, credentials=creds)
-    path = CREDENTIALS_PATH or os.path.join(os.path.dirname(__file__), 'projeto-rpa-blackd-2023-16b15891f73c.json')
+    path = CREDENTIALS_PATH or os.path.join(os.path.dirname(__file__), 'projeto-rpa-empresa-2023-16b15891f73c.json')
     creds = service_account.Credentials.from_service_account_file(path)
     return bigquery.Client(project=PROJECT_ID, credentials=creds)
 
@@ -44,7 +44,7 @@ def fetch_vendas_mensais(client, codigos, meses_lookback=36):
           TRIM(CODIGO_PRODUTO) AS COD,
           FORMAT_DATE('%Y-%m', SAFE.PARSE_DATE('%Y-%m-%d', SUBSTR(EMISSAO,1,10))) AS MES,
           SUM(SAFE_CAST(QUANTIDADE AS FLOAT64)) AS QTD
-        FROM `projeto-rpa-blackd-2023.VENDAS.VendasHistoricasDois`
+        FROM `projeto-rpa-empresa-2023.VENDAS.VendasHistoricasDois`
         WHERE SAFE_CAST(SUBSTR(EMISSAO,1,10) AS DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL {meses_lookback} MONTH)
           AND DESC_TIPODOCUMENTO NOT IN ('BONIFICACAO','SAC','MOSTRUARIO','DISPLAY','CAMPANHAS','TROCA')
           AND EMPRESA = 'STAR_'
@@ -60,7 +60,7 @@ def fetch_estoque(client, codigos):
     q = f"""
         SELECT TRIM(codigo_do_item) AS COD,
                SUM(SAFE_CAST(REPLACE(CAST(quantidade AS STRING), ',', '.') AS FLOAT64)) AS DISPONIVEL
-        FROM `projeto-rpa-blackd-2023.VENDAS.View_SaldoFisicoPorItem`
+        FROM `projeto-rpa-empresa-2023.VENDAS.View_SaldoFisicoPorItem`
         WHERE codigo_do_local_estoque_ LIKE '13%'
           AND TRIM(codigo_do_item) IN ({cods})
         GROUP BY 1

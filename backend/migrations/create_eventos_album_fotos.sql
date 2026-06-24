@@ -1,4 +1,4 @@
--- Migration: criação da tabela do álbum de fotos "Seleção 3LACKD"
+-- Migration: criação da tabela do álbum de fotos "Seleção EMPRESA"
 -- Aplica-se ao schema corrente (portal_chamado ou portal_chamado_homolog)
 
 CREATE TABLE IF NOT EXISTS eventos_album_fotos (

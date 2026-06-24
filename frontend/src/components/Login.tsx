@@ -7,11 +7,11 @@ import { useToast } from '../contexts/ToastContext';
 // Galeria: imagens colocadas em frontend/public/login-gallery/
 // Para reverter ao layout antigo: renomear Login.original.tsx -> Login.tsx
 const gallery = [
-  { src: '/login-gallery/2.jpg', alt: '3LACKD — Detalhes que fazem a diferenca' },
-  { src: '/login-gallery/1.jpg', alt: '3LACKD — Yiwu, China' },
-  { src: '/login-gallery/4.jpg', alt: '3LACKD — Equipe Nova Era' },
-  { src: '/login-gallery/5.jpg', alt: '3LACKD — Reconhecimento internacional' },
-  { src: '/login-gallery/3.jpg', alt: '3LACKD — Nosso proposito' },
+  { src: '/login-gallery/2.jpg', alt: 'EMPRESA — Detalhes que fazem a diferenca' },
+  { src: '/login-gallery/1.jpg', alt: 'EMPRESA — Yiwu, China' },
+  { src: '/login-gallery/4.jpg', alt: 'EMPRESA — Equipe Nova Era' },
+  { src: '/login-gallery/5.jpg', alt: 'EMPRESA — Reconhecimento internacional' },
+  { src: '/login-gallery/3.jpg', alt: 'EMPRESA — Nosso proposito' },
 ];
 
 const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
@@ -45,12 +45,12 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
     },
     {
       title: 'Inovação Agrícola',
-      text: 'Fundada por Shiro Uemura, a 3LACKD nasceu com a missão de inovar no segmento agrícola, criando equipamentos manuais que otimizavam a lavoura.',
+      text: 'Fundada por Shiro Uemura, a EMPRESA nasceu com a missão de inovar no segmento agrícola, criando equipamentos manuais que otimizavam a lavoura.',
       year: 'NOSSA ORIGEM',
     },
     {
       title: 'Atenção aos Detalhes',
-      text: '"Detalhes que fazem a diferença" — Representamos a essência 3LACKD através de precisão e evolução tecnológica constante.',
+      text: '"Detalhes que fazem a diferença" — Representamos a essência EMPRESA através de precisão e evolução tecnológica constante.',
       year: 'FILOSOFIA',
     },
   ];
@@ -208,7 +208,7 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
 
         {/* Header: logo */}
         <div className="absolute top-10 left-12 z-20 flex items-center gap-3">
-          <img src="/Logo-3LACKD.png" alt="3LACKD" className="h-10 brightness-0 invert" />
+          <img src="/Logo-EMPRESA.png" alt="EMPRESA" className="h-10 brightness-0 invert" />
           <div className="h-8 w-px bg-white/30" />
           <span className="text-[10px] font-black text-white/70 tracking-[0.4em] uppercase">Portal Corporativo</span>
         </div>
@@ -340,7 +340,7 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-b from-transparent to-white pointer-events-none" />
         {/* Logo sobreposto */}
         <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
-          <img src="/Logo-3LACKD.png" alt="3LACKD" className="h-7 brightness-0 invert drop-shadow-lg" />
+          <img src="/Logo-EMPRESA.png" alt="EMPRESA" className="h-7 brightness-0 invert drop-shadow-lg" />
           <span className="text-[9px] font-black text-white/80 tracking-[0.3em] uppercase drop-shadow">Portal Corporativo</span>
         </div>
         {/* Indicadores minimalistas */}
@@ -363,7 +363,7 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
             <h2 className="text-3xl lg:text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">
               Acesso <span className="text-[#1E73C8] lg:block">Restrito</span>
             </h2>
-            <p className="text-slate-400 text-xs lg:text-sm font-bold tracking-tight">Portal Corporativo de Gestão e Dados 3LACKD.</p>
+            <p className="text-slate-400 text-xs lg:text-sm font-bold tracking-tight">Portal Corporativo de Gestão e Dados EMPRESA.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -450,7 +450,7 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
                     type="email"
                     required
                     className="block w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl focus:ring-4 focus:ring-red-500/10 focus:bg-white text-sm text-slate-900 outline-none transition-all"
-                    placeholder="email@blackd.com.br"
+                    placeholder="email@empresa.com.br"
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
                   />

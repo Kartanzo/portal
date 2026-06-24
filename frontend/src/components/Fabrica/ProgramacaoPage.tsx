@@ -75,7 +75,7 @@ const derivarEncarteTaba = (itens: EstruturaItem[]): { item: EstruturaItem; tipo
 let cacheOps: OP[] | null = null;
 const cachePlano: Record<string, { plano: PlanoRow[]; versao: Versao }> = {};
 
-const userKey = (): string => { try { const s = sessionStorage.getItem('blackd_user'); if (s) return String(JSON.parse(s)?.id ?? 'anon'); } catch { /* */ } return 'anon'; };
+const userKey = (): string => { try { const s = sessionStorage.getItem('empresa_user'); if (s) return String(JSON.parse(s)?.id ?? 'anon'); } catch { /* */ } return 'anon'; };
 const lsKey = () => `programacao:versao:${userKey()}`;
 const num = (v: number | null | undefined) => (v === null || v === undefined) ? '—' : Number(v).toLocaleString('pt-BR');
 // Helpers de tendência (espelham o Otimizador de Produção): normaliza código e parse BR.
@@ -510,7 +510,7 @@ const ProgramacaoPage: React.FC = () => {
   // Só usuários da Fábrica (ou super_user/ceo) podem definir a versão oficial.
   const podeOficial = useMemo(() => {
     try {
-      const u = JSON.parse(sessionStorage.getItem('blackd_user') || '{}');
+      const u = JSON.parse(sessionStorage.getItem('empresa_user') || '{}');
       if (['super_user', 'ceo'].includes(u.role)) return true;
       const norm = (s: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
       return [u.sector, ...String(u.managed_sectors || '').split(/[;,]/)].some((s: string) => norm(s) === norm('Fábrica'));
@@ -1950,7 +1950,7 @@ const ProgramacaoPage: React.FC = () => {
 
     let logoB64: string | null = null;
     try {
-      const resp = await fetch('/Logo-3LACKD.png'); const blob = await resp.blob();
+      const resp = await fetch('/Logo-EMPRESA.png'); const blob = await resp.blob();
       logoB64 = await new Promise<string>((res) => { const r = new FileReader(); r.onloadend = () => res(r.result as string); r.readAsDataURL(blob); });
     } catch { /* sem logo */ }
 
@@ -1966,7 +1966,7 @@ const ProgramacaoPage: React.FC = () => {
       doc.setDrawColor(...ACCENT); doc.setLineWidth(0.4); doc.line(10, 28, W - 10, 28);
       doc.setDrawColor(...ACCENT); doc.setLineWidth(0.5); doc.line(10, H - 10, W - 10, H - 10);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120, 120, 120);
-      doc.text('3LACKD — Programação de Produção (Setor Fábrica)', 10, H - 5);
+      doc.text('EMPRESA — Programação de Produção (Setor Fábrica)', 10, H - 5);
       doc.text(`Página ${pageNum} de ${totalPages}`, W - 10, H - 5, { align: 'right' });
       doc.setFillColor(...ACCENT); doc.triangle(W, H, W - 10, H, W, H - 10, 'F');
     };
@@ -2037,7 +2037,7 @@ const ProgramacaoPage: React.FC = () => {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
     const W = doc.internal.pageSize.getWidth(); const H = doc.internal.pageSize.getHeight();
     let logoB64: string | null = null;
-    try { const resp = await fetch('/Logo-3LACKD.png'); const blob = await resp.blob(); logoB64 = await new Promise<string>((res) => { const r = new FileReader(); r.onloadend = () => res(r.result as string); r.readAsDataURL(blob); }); } catch { /* */ }
+    try { const resp = await fetch('/Logo-EMPRESA.png'); const blob = await resp.blob(); logoB64 = await new Promise<string>((res) => { const r = new FileReader(); r.onloadend = () => res(r.result as string); r.readAsDataURL(blob); }); } catch { /* */ }
     const drawHF = (pageNum: number, total: number) => {
       doc.setFillColor(...ACCENT); doc.rect(0, 0, W, 3, 'F');
       if (logoB64) { doc.setFillColor(...ACCENT); doc.roundedRect(8, 6, 46, 18, 2, 2, 'F'); try { doc.addImage(logoB64, 'PNG', 10, 8, 42, 14); } catch { /* */ } }
@@ -2049,7 +2049,7 @@ const ProgramacaoPage: React.FC = () => {
       doc.setDrawColor(...ACCENT); doc.setLineWidth(0.4); doc.line(10, 28, W - 10, 28);
       doc.setDrawColor(...ACCENT); doc.setLineWidth(0.5); doc.line(10, H - 10, W - 10, H - 10);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120, 120, 120);
-      doc.text('3LACKD — Programação de Produção (Setor Fábrica)', 10, H - 5);
+      doc.text('EMPRESA — Programação de Produção (Setor Fábrica)', 10, H - 5);
       doc.text(`Página ${pageNum} de ${total}`, W - 10, H - 5, { align: 'right' });
       doc.setFillColor(...ACCENT); doc.triangle(W, H, W - 10, H, W, H - 10, 'F');
     };

@@ -10,7 +10,7 @@ import { formatDateBR, formatDateOnly } from './dateUtils';
 
 import { useToast } from '../contexts/ToastContext';
 
-export const TICKET_FILTER_STORAGE_KEY = 'blackd_ticket_filters';
+export const TICKET_FILTER_STORAGE_KEY = 'empresa_ticket_filters';
 
 const TI_CATEGORIES: string[] = [TicketCategory.STARSOFT, TicketCategory.INFRASTRUCTURE];
 

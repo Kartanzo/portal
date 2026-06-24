@@ -3,7 +3,7 @@
 Coloque aqui 5 imagens com os nomes exatos:
 
 - `1.jpg` — foto em Yiwu (pessoa na estação)
-- `2.jpg` — banner 3LACKD (logo vermelho + "Detalhes que fazem a diferença")
+- `2.jpg` — banner EMPRESA (logo vermelho + "Detalhes que fazem a diferença")
 - `3.jpg` — infográfico "Nosso Propósito" (torii vermelho)
 - `4.jpg` — foto da equipe ("Nova Era")
 - `5.jpg` — foto do reconhecimento internacional (família + certificado)

@@ -35,7 +35,7 @@ def get_bq_client():
     from google.cloud import bigquery
     from google.oauth2 import service_account
     candidates = [
-        os.path.join(os.path.dirname(__file__), 'projeto-rpa-blackd-2023-16b15891f73c.json'),
+        os.path.join(os.path.dirname(__file__), 'projeto-rpa-empresa-2023-16b15891f73c.json'),
     ]
     for path in candidates:
         if os.path.exists(path):

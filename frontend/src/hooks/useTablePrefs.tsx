@@ -7,7 +7,7 @@ export interface SortState { key: string | null; dir: SortDir; }
 export interface TablePrefs { widths: Record<string, number>; sort: SortState; }
 
 function userKey(): string {
-  try { const s = sessionStorage.getItem('blackd_user'); if (s) return String(JSON.parse(s)?.id ?? 'anon'); } catch { /* noop */ }
+  try { const s = sessionStorage.getItem('empresa_user'); if (s) return String(JSON.parse(s)?.id ?? 'anon'); } catch { /* noop */ }
   return 'anon';
 }
 

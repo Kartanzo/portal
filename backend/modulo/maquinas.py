@@ -3,7 +3,7 @@
 - Máquinas: cadastro simples (só nome).
 - Regras dinâmicas por COD_ITEM (prefixo "começa com" ou código exato) — reavaliadas ao vivo.
 - Exceções manuais (incluir/excluir um produto específico numa máquina).
-- Produtos vêm do BigQuery `projeto-rpa-blackd-2023.VIEW.view_info_ie` (COD_ITEM, DESC_ITEM).
+- Produtos vêm do BigQuery `projeto-rpa-empresa-2023.VIEW.view_info_ie` (COD_ITEM, DESC_ITEM).
 
 Um produto pode pertencer a mais de uma máquina (relação N:N resolvida pelas regras).
 """
@@ -29,9 +29,9 @@ MODULE_ID = "cadastro_maquinas"
 # ============================================================================
 # BIGQUERY (mesmo padrão de plano_producao.py)
 # ============================================================================
-_BQ_KEY_FILE = os.path.join(os.path.dirname(__file__), "..", "projeto-rpa-blackd-2023-16b15891f73c.json")
-_BQ_PROJECT = "projeto-rpa-blackd-2023"
-_PRODUTOS_TABELA = "projeto-rpa-blackd-2023.VIEW.view_info_ie"
+_BQ_KEY_FILE = os.path.join(os.path.dirname(__file__), "..", "projeto-rpa-empresa-2023-16b15891f73c.json")
+_BQ_PROJECT = "projeto-rpa-empresa-2023"
+_PRODUTOS_TABELA = "projeto-rpa-empresa-2023.VIEW.view_info_ie"
 
 
 def _bq_client():

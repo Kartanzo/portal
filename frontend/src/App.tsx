@@ -129,13 +129,13 @@ function App() {
 
   useAutoLogout(user, () => {
     setUser(null);
-    sessionStorage.removeItem('blackd_user');
+    sessionStorage.removeItem('empresa_user');
     sessionStorage.removeItem(TICKET_FILTER_STORAGE_KEY);
-    sessionStorage.removeItem('blackd_is_ticket_filters');
+    sessionStorage.removeItem('empresa_is_ticket_filters');
   });
 
   useEffect(() => {
-    const savedUser = sessionStorage.getItem('blackd_user');
+    const savedUser = sessionStorage.getItem('empresa_user');
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
       setUser(parsedUser); // Set initial state from cache for speed
@@ -152,7 +152,7 @@ function App() {
         const mergedPermissions = mergePermissions(roleDefaults, latestUser.permissions);
         const enrichedUser = { ...latestUser, permissions: mergedPermissions };
         setUser(enrichedUser);
-        sessionStorage.setItem('blackd_user', JSON.stringify(enrichedUser));
+        sessionStorage.setItem('empresa_user', JSON.stringify(enrichedUser));
       }).catch(err => {
         console.error("App: Failed to refresh user data", err);
         if (err.message.includes("404") || err.message.includes("User not found")) {
@@ -170,11 +170,11 @@ function App() {
       const mergedPermissions = mergePermissions(roleDefaults, userData.permissions);
       const enrichedUser = { ...userData, permissions: mergedPermissions };
       setUser(enrichedUser);
-      sessionStorage.setItem('blackd_user', JSON.stringify(enrichedUser));
+      sessionStorage.setItem('empresa_user', JSON.stringify(enrichedUser));
     }).catch(() => {
       // Fallback: use user as-is if role_permissions fetch fails
       setUser(userData);
-      sessionStorage.setItem('blackd_user', JSON.stringify(userData));
+      sessionStorage.setItem('empresa_user', JSON.stringify(userData));
     });
   };
 
@@ -182,11 +182,11 @@ function App() {
     // Fire-and-forget: deleta sessao no backend e limpa cookie HttpOnly
     fetch('/api/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
     setUser(null);
-    sessionStorage.removeItem('blackd_user');
+    sessionStorage.removeItem('empresa_user');
     sessionStorage.removeItem(TICKET_FILTER_STORAGE_KEY);
-    sessionStorage.removeItem('blackd_is_ticket_filters');
+    sessionStorage.removeItem('empresa_is_ticket_filters');
     // Also clear localStorage just in case of migration/legacy
-    localStorage.removeItem('blackd_user');
+    localStorage.removeItem('empresa_user');
     localStorage.removeItem('sop_dashboard_filters');
   };
 

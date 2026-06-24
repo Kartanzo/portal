@@ -38,8 +38,8 @@ my-skills/
 .kiro/
 
 # Google Cloud credentials (NUNCA commitar)
-projeto-rpa-blackd-2023-*.json
-backend/projeto-rpa-blackd-2023-*.json
+projeto-rpa-empresa-2023-*.json
+backend/projeto-rpa-empresa-2023-*.json
 backend/.venv-smoke/
 
 # Secrets adicionais (NUNCA commitar)

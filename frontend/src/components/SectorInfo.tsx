@@ -22,7 +22,7 @@ const SectorInfo: React.FC = () => {
         },
         {
             title: 'Sugestão / Inclusão de Campo',
-            description: 'Melhorias, adição de campos ou ajustes finos em dashboards, automações e Blackdnho.',
+            description: 'Melhorias, adição de campos ou ajustes finos em dashboards, automações e Empresanho.',
             icon: <Database className="w-8 h-8 text-white" />,
             gradient: 'from-emerald-500 to-green-600',
             shadow: 'shadow-emerald-200'

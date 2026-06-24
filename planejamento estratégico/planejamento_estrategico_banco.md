@@ -25,7 +25,7 @@
 - Desenvolver e Reter Talentos
 - Avaliação de Desempenho
 - Integração (Mudança de Cultura Hierárquica para resultado e aprendizagem)
-- Marketing da Empresa: Fortalecer a presença Institucional da 3LACKD, garantindo comunicação profissional, padronizada e eficiente em todos os pontos de contato; aprimorar materiais comerciais e de PDV; modernizar a Identidade visual; ampliar a presença digital; e criar processos organizacionais
+- Marketing da Empresa: Fortalecer a presença Institucional da EMPRESA, garantindo comunicação profissional, padronizada e eficiente em todos os pontos de contato; aprimorar materiais comerciais e de PDV; modernizar a Identidade visual; ampliar a presença digital; e criar processos organizacionais
 - Captar Talentos (cargos chaves)
 
 ## PIP

@@ -231,7 +231,7 @@ São coisas **diferentes**:
 3 formatos, todos disponíveis no header:
 
 - **Excel**: gerado no backend (openpyxl) com formatação, freeze pane, aba de parâmetros
-- **PDF**: mesmo layout da Torre de Controle S&OP (logo 3LACKD, faixa vermelha, KPIs coloridos)
+- **PDF**: mesmo layout da Torre de Controle S&OP (logo EMPRESA, faixa vermelha, KPIs coloridos)
 - **WhatsApp**: envia o Excel anexado via WAHA pro número autorizado, com resumo no caption
 
 Os 3 respeitam **filtros e ordenação** ativos. Se você filtrou só os em Ruptura, só esses vão pro arquivo.

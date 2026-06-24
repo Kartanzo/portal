@@ -1,5 +1,5 @@
 """
-Eventos — Álbum de fotos "Seleção 3LACKD" com armazenamento em Postgres (BYTEA).
+Eventos — Álbum de fotos "Seleção EMPRESA" com armazenamento em Postgres (BYTEA).
 
 Endpoints:
 - GET    /eventos/fotos              → lista fotos (apenas IDs/ordem; thumbnails inline base64 opcional)

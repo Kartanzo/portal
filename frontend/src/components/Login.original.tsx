@@ -27,12 +27,12 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
     },
     {
       title: "Inovação Agrícola",
-      text: "Fundada por Shiro Uemura, a 3LACKD nasceu com a missão de inovar no segmento agrícola, criando equipamentos manuais que otimizavam a lavoura.",
+      text: "Fundada por Shiro Uemura, a EMPRESA nasceu com a missão de inovar no segmento agrícola, criando equipamentos manuais que otimizavam a lavoura.",
       year: "NOSSA ORIGEM"
     },
     {
       title: "Atenção aos Detalhes",
-      text: "\"Detalhes que fazem a diferença\" — Representamos a essência 3LACKD através de precisão e evolução tecnológica constante.",
+      text: "\"Detalhes que fazem a diferença\" — Representamos a essência EMPRESA através de precisão e evolução tecnológica constante.",
       year: "FILOSOFIA"
     }
   ];
@@ -99,7 +99,7 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
 
         {/* Corporate Header */}
         <div className="absolute top-12 left-12 z-20">
-          <img src="/Logo-3LACKD.png" alt="3LACKD" className="h-10 brightness-0 invert" />
+          <img src="/Logo-EMPRESA.png" alt="EMPRESA" className="h-10 brightness-0 invert" />
         </div>
 
         {/* 3D Centerpiece */}
@@ -144,7 +144,7 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
         {/* Bottom Footer Detail */}
         <div className="absolute bottom-12 left-12 right-12 flex justify-between items-center z-10 pointer-events-none">
           <div className="flex items-center gap-4 text-[10px] font-black text-white/40 tracking-[0.4em] uppercase">
-            <span>3LACKD Industrial</span>
+            <span>EMPRESA Industrial</span>
             <div className="w-8 h-px bg-white/20" />
             <span>Since 1981</span>
           </div>
@@ -157,7 +157,7 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
         <div className="w-full max-w-md space-y-12">
           <div className="space-y-4">
             <h2 className="text-5xl font-black text-slate-900 tracking-tighter uppercase leading-none">Acesso<br /><span className="text-[#1E73C8]">Restrito</span></h2>
-            <p className="text-slate-400 text-sm font-bold tracking-tight">Portal Corporativo de Gestão e Dados 3LACKD.</p>
+            <p className="text-slate-400 text-sm font-bold tracking-tight">Portal Corporativo de Gestão e Dados EMPRESA.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -239,7 +239,7 @@ const Login: React.FC<{ onLogin: (user: any) => void }> = ({ onLogin }) => {
                     type="email"
                     required
                     className="block w-full px-6 py-5 bg-slate-50 border border-slate-100 rounded-3xl focus:ring-4 focus:ring-red-500/10 focus:bg-white text-sm text-slate-900 outline-none transition-all"
-                    placeholder="email@blackd.com.br"
+                    placeholder="email@empresa.com.br"
                     value={forgotEmail}
                     onChange={e => setForgotEmail(e.target.value)}
                   />

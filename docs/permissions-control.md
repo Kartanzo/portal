@@ -1,6 +1,6 @@
 # Controle de Permissões — Documentação Centralizada
 
-> Gerado em 2026-03-18 | Banco: `criadordigital` | Schema: `portal_chamado`
+> Gerado em 2026-03-18 | Banco: `postgres-corp` | Schema: `portal_chamado`
 
 ---
 

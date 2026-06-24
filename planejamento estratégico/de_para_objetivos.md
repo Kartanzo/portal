@@ -27,7 +27,7 @@
 | Desenvolver e Reter Talentos | PAC | Desenvolver e Reter Talentos |
 | Avaliação de Desempenho | PAC | Avaliação de Desempenho |
 | Integração (Mudança de Cultura Hierárquica para resultado e aprendizagem) | PAC | Mudança de Cultura Hierárquica para resultado e aprendizagem |
-| Marketing da Empresa: Fortalecer a presença Institucional da 3LACKD... | PAC | Marketing da Empresa |
+| Marketing da Empresa: Fortalecer a presença Institucional da EMPRESA... | PAC | Marketing da Empresa |
 | Captar Talentos (cargos chaves) | PAC | Captar Talentos (cargos chaves) |
 
 ## PIP

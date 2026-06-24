@@ -287,7 +287,7 @@ def upload_lote(arquivos: list[UploadFile] = File(...), user_id: Optional[str] =
     """Recebe múltiplos arquivos e mapeia automaticamente pelo nome para o código do modelo.
 
     Reconhece prefixos como 'F 008.01', 'F 091.00', etc.
-    Mapeamentos especiais para nomes da 3LACKD: 'FICHA CADASTRAL PJ' → F 093.PJ etc.
+    Mapeamentos especiais para nomes da EMPRESA: 'FICHA CADASTRAL PJ' → F 093.PJ etc.
     """
     uid = _uid(user_id, edit=True)
     ensure_tables()

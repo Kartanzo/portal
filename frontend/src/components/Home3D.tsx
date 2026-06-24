@@ -12,8 +12,8 @@ import {
 import * as THREE from 'three';
 
 // Logo component inside the cube
-const BlackdLogoInside = ({ isHovered }: { isHovered: boolean }) => {
-    const texture = useLoader(THREE.TextureLoader, "/Logo-3LACKD.png");
+const EmpresaLogoInside = ({ isHovered }: { isHovered: boolean }) => {
+    const texture = useLoader(THREE.TextureLoader, "/Logo-EMPRESA.png");
     const meshRef = useRef<THREE.Mesh>(null!);
 
     useFrame((state) => {
@@ -80,7 +80,7 @@ const FrostedCube = () => {
                     opacity={0.5}
                 />
                 <Suspense fallback={null}>
-                    <BlackdLogoInside isHovered={hovered} />
+                    <EmpresaLogoInside isHovered={hovered} />
                 </Suspense>
             </mesh>
         </Float>

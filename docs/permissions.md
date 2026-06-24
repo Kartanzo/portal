@@ -1,6 +1,6 @@
 # Controle de Permissão — Portal de Chamado
 
-> **Schema:** `portal_chamado` · **Banco:** PostgreSQL (`criadordigital` em `31.97.170.197`)  
+> **Schema:** `portal_chamado` · **Banco:** PostgreSQL (`postgres-corp` em `192.0.2.10`)  
 > **Gerado em:** 2026-03-18
 
 ---
@@ -150,64 +150,64 @@ Cada módulo aparece como chave no JSON de `permissions`. As propriedades possí
 
 | Nome | Email | Setor |
 |------|-------|-------|
-| DIEGO TEIXEIRA | diego.dias@blackd.com.br | Gestão de Informação |
-| THIAGO NORONHA | thiago.noronha@blackd.com.br | Gestão de Informação |
+| Usuário 1 | usuario1@empresa.com.br | Gestão de Informação |
+| Usuário 2 | usuario2@empresa.com.br | Gestão de Informação |
 
 ### `ceo` (ativos)
 
 | Nome | Email | Setor |
 |------|-------|-------|
-| VICTOR UEMURA | victor.uemura@blackd.com.br | Diretoria |
+| Usuário 3 | usuario3@empresa.com.br | Diretoria |
 
 ### `admin` (ativos)
 
 | Nome | Email | Setor Principal | Setores Gerenciados | Permissões Especiais |
 |------|-------|-----------------|---------------------|----------------------|
-| BRUNA BATISTA | bruna.batista@blackd.com.br | Financeiro | — | — |
-| BRUNO BRANDAO | bruno.brandao@blackd.com.br | Compras | Compras; Logistica | — |
-| CARLOS BRAGA | carlos.braga@blackd.com.br | Marketing | Marketing; Ecommerce | — |
-| DANIEL ALVAREZ | daniel.alvarez@blackd.com.br | T.I | — | `tickets.can_edit: true` |
-| Diego Teixeira | gsi@blackd.com.br | T.I | T.I | `tickets.can_edit: true` |
-| ERICK TUKUSSER | erick.tukusser@blackd.com.br | Fabrica | — | — |
-| FABIO LOURENCON | fabio.lourencon@blackd.com.br | Regional SP Interior | Regional SP Interior; Regional Sul | — |
-| FERNANDA SILVA | fernanda.silva@blackd.com.br | RH | — | — |
-| FERNANDO CASTRO | fernando.castro@blackd.com.br | Regional Centro-Oeste | Regional Centro-Oeste; Regional Norte | — |
-| JESSE GUEDES | jesse.guedes@blackd.com.br | Financeiro | Financeiro; Controladoria | — |
-| KAIQUE MORENO | kaique.moreno@blackd.com.br | Financeiro | — | — |
-| MAICON PEREIRA | maicon.pereira@blackd.com.br | Regional SP Capital | Regional SP Capital; Regional Sudeste | — |
-| MALU MAIA | malu.maia@blackd.com.br | Comercial | — | `projects.can_edit/delete: true` |
-| MILENA PARDINI | milena.pardini@blackd.com.br | Marketing | — | — |
-| MONICA MORAIS | monica.morais@blackd.com.br | Televendas | Televendas | — |
-| RANGEL ARAUJO | rangel.araujo@blackd.com.br | Regional Nordeste | Regional Nordeste | — |
+| Usuário 4 | usuario4@empresa.com.br | Financeiro | — | — |
+| Usuário 5 | usuario5@empresa.com.br | Compras | Compras; Logistica | — |
+| Usuário 6 | usuario6@empresa.com.br | Marketing | Marketing; Ecommerce | — |
+| Usuário 7 | usuario7@empresa.com.br | T.I | — | `tickets.can_edit: true` |
+| Usuário 1 | gsi@empresa.com.br | T.I | T.I | `tickets.can_edit: true` |
+| Usuário 8 | usuario8@empresa.com.br | Fabrica | — | — |
+| Usuário 9 | usuario9@empresa.com.br | Regional SP Interior | Regional SP Interior; Regional Sul | — |
+| Usuário 10 | usuario10@empresa.com.br | RH | — | — |
+| Usuário 11 | usuario11@empresa.com.br | Regional Centro-Oeste | Regional Centro-Oeste; Regional Norte | — |
+| Usuário 12 | usuario12@empresa.com.br | Financeiro | Financeiro; Controladoria | — |
+| Usuário 13 | usuario13@empresa.com.br | Financeiro | — | — |
+| Usuário 14 | usuario14@empresa.com.br | Regional SP Capital | Regional SP Capital; Regional Sudeste | — |
+| Usuário 15 | usuario15@empresa.com.br | Comercial | — | `projects.can_edit/delete: true` |
+| Usuário 16 | usuario16@empresa.com.br | Marketing | — | — |
+| Usuário 17 | usuario17@empresa.com.br | Televendas | Televendas | — |
+| Usuário 18 | usuario18@empresa.com.br | Regional Nordeste | Regional Nordeste | — |
 
 ### `user` (ativos — 27 usuários)
 
 | Nome | Email | Setor |
 |------|-------|-------|
-| ANA DURAN | ana.duran@blackd.com.br | Controladoria |
-| ANÁLISE DE CRÉDITO | credito@blackd.com.br | Financeiro |
-| BIANCA FONTES | bianca.fontes@blackd.com.br | Comercial |
-| BIANCA URRI | bianca.urri@blackd.com.br | Televendas |
-| CONTAS A PAGAR | cpagar@blackd.com.br | Financeiro |
-| CONTAS A RECEBER | creceber@blackd.com.br | Financeiro |
-| CRIS CARVALHO | cris.carvalho@blackd.com.br | Qualidade |
-| DANDARA | sac@blackd.com.br | Comercial |
-| ECOMMERCE | ecommerce@blackd.com.br | Ecommerce |
-| FABIANA ANDRADE | fabiana.andrade@blackd.com.br | Logistica |
-| FABIANNE GARBIS | fabianne.garbis@blackd.com.br | Comercial |
-| FISCAL | fiscal@blackd.com.br | Financeiro |
-| GIOVANNA MARANHÃO | giovanna.maranhao@blackd.com.br | Marketing |
-| JOYCE ARAUJO | joyce.araujo@blackd.com.br | Televendas |
-| LARISSA SILVA | larissa.silva@blackd.com.br | Televendas |
-| LECIANE ALMEIDA | leciane.almeida@blackd.com.br | Televendas |
-| MARIA EDUARDA GOES | mariaeduarda.goes@blackd.com.br | Televendas |
-| MARINA FERNANDES | marina.fernandes@blackd.com.br | Ecommerce |
-| RARISCA GOMES | rarisca.gomes@blackd.com.br | Televendas |
-| RHAYSSA SOUZA | compras2@blackd.com.br | Compras |
-| TAIRIS DUDA | tairis.duda@blackd.com.br | Comercial |
-| THAMYS GOMES | thamys.gomes@blackd.com.br | Compras |
-| VITORIA AVILLA | vitoria.avilla@blackd.com.br | Televendas |
-| VITORIA MONTEIRO | vitoria.monteiro@blackd.com.br | Ecommerce |
+| Usuário 19 | usuario19@empresa.com.br | Controladoria |
+| Usuário 20 | credito@empresa.com.br | Financeiro |
+| Usuário 21 | usuario21@empresa.com.br | Comercial |
+| Usuário 22 | usuario22@empresa.com.br | Televendas |
+| Usuário 23 | cpagar@empresa.com.br | Financeiro |
+| Usuário 24 | creceber@empresa.com.br | Financeiro |
+| Usuário 25 | usuario25@empresa.com.br | Qualidade |
+| Usuário 26 | sac@empresa.com.br | Comercial |
+| Usuário 27 | ecommerce@empresa.com.br | Ecommerce |
+| Usuário 28 | usuario28@empresa.com.br | Logistica |
+| Usuário 29 | usuario29@empresa.com.br | Comercial |
+| Usuário 30 | fiscal@empresa.com.br | Financeiro |
+| Usuário 31 | usuario31@empresa.com.br | Marketing |
+| Usuário 32 | usuario32@empresa.com.br | Televendas |
+| Usuário 33 | usuario33@empresa.com.br | Televendas |
+| Usuário 34 | usuario34@empresa.com.br | Televendas |
+| Usuário 35 | usuario35@empresa.com.br | Televendas |
+| Usuário 36 | usuario36@empresa.com.br | Ecommerce |
+| Usuário 37 | usuario37@empresa.com.br | Televendas |
+| Usuário 38 | compras2@empresa.com.br | Compras |
+| Usuário 39 | usuario39@empresa.com.br | Comercial |
+| Usuário 40 | usuario40@empresa.com.br | Compras |
+| Usuário 41 | usuario41@empresa.com.br | Televendas |
+| Usuário 42 | usuario42@empresa.com.br | Ecommerce |
 
 ---
 

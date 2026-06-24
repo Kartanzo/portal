@@ -593,8 +593,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
             ) : (
               <div className="bg-red-600 p-4 rounded-xl shadow-lg border border-red-500/30">
                 <img
-                  src="/Logo-3LACKD.png"
-                  alt="3LACKD Logo"
+                  src="/Logo-EMPRESA.png"
+                  alt="EMPRESA Logo"
                   className="w-full h-auto object-contain"
                 />
               </div>
@@ -664,7 +664,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
           fontSize: '16px',
           letterSpacing: '0.5px',
         }}>
-          3LACKD
+          EMPRESA
         </div>
 
         <button
@@ -734,7 +734,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
             color: '#fff',
             fontSize: '16px',
           }}>
-            3LACKD
+            EMPRESA
           </div>
           <button
             onClick={closeMobile}

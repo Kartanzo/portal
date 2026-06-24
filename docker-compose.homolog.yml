@@ -12,7 +12,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: blackd-backend-homolog
+    container_name: empresa-backend-homolog
     ports:
       - "8010:8000"
     env_file:
@@ -20,7 +20,7 @@ services:
     volumes:
       - ./backend/uploads_homolog:/app/uploads
       - ./backend/cred.json:/app/cred.json
-      - ./backend/projeto-rpa-blackd-2023-16b15891f73c.json:/app/google_credentials.json:ro
+      - ./backend/projeto-rpa-empresa-2023-16b15891f73c.json:/app/google_credentials.json:ro
     restart: unless-stopped
     networks:
       - homolog-network
@@ -29,7 +29,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
-    container_name: blackd-frontend-homolog
+    container_name: empresa-frontend-homolog
     ports:
       - "8090:80"
     volumes:

@@ -24,7 +24,7 @@ index.tsx
 
 **Fluxo de inicialização:**
 1. `index.tsx` monta `<App />`
-2. `App.tsx` verifica `sessionStorage.blackd_user`
+2. `App.tsx` verifica `sessionStorage.empresa_user`
 3. Se usuário existir → carrega interface; se não → redireciona para `/login`
 4. Após carregar, `NotificationContext` inicia polling a cada 30s
 
@@ -161,13 +161,13 @@ O `App.tsx` usa `HashRouter`. Todas as rotas protegidas passam pelo componente `
 1. Usuário preenche email e senha em `Login.tsx`
 2. `api.login(email, password)` → `POST /api/login`
 3. Backend retorna objeto `User` com permissões mescladas
-4. Objeto salvo em `sessionStorage.blackd_user`
+4. Objeto salvo em `sessionStorage.empresa_user`
 5. App renderiza interface conforme role e permissões
 
 ### Sessão
 
 - **Persistência**: `sessionStorage` (limpa ao fechar o browser/aba)
-- **Chave**: `blackd_user` (objeto JSON do usuário)
+- **Chave**: `empresa_user` (objeto JSON do usuário)
 - **Refresh**: Ao carregar a página, o app tenta atualizar dados via `api.getUser(id)`
 
 ### Auto-Logout (`useAutoLogout.ts`)
@@ -395,7 +395,7 @@ Visualizações disponíveis: Lista, Kanban, Timeline/Gantt, Mapa Estratégico
 ## Estilização
 
 - **Tailwind CSS** via classes utilitárias em todos os componentes
-- **Cor principal:** vermelho `#1E73C8` (identidade 3LACKD)
+- **Cor principal:** vermelho `#1E73C8` (identidade EMPRESA)
 - **Paleta secundária:** cinzas `slate`, branco, preto
 - **CSS customizado** para animação de partículas na tela de login
 - **Responsivo:** breakpoints `md:` e `lg:` com mobile-first

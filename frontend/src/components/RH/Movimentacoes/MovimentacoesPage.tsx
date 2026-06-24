@@ -26,13 +26,13 @@ const URG_LABEL: Record<string, string> = {
 };
 
 const EQUIP_OPCOES = ['Notebook básico (Office)', 'Notebook médio (i5/8GB)', 'Notebook performance (i7/16GB+)', 'Notebook workstation', 'Desktop', 'Monitor adicional', '2 monitores adicionais', 'Teclado/Mouse', 'Headset com microfone', 'Celular corporativo', 'Linha telefônica/ramal', 'Token/SmartCard'];
-const ACESSO_OPCOES = ['Email @blackd.com.br', 'Office 365', 'Google Workspace', 'VPN', 'Acesso remoto/RDP', 'CFTV', 'Controle de ponto', 'GitHub/GitLab'];
+const ACESSO_OPCOES = ['Email @empresa.com.br', 'Office 365', 'Google Workspace', 'VPN', 'Acesso remoto/RDP', 'CFTV', 'Controle de ponto', 'GitHub/GitLab'];
 const SISTEMAS_EXTERNOS = ['4Bis', 'Chatwoot', 'StarSoft', 'Krayin (CRM)', 'WAHA (WhatsApp)', 'BigQuery', 'Looker Studio', 'Conta Azul', 'WMS', 'PCP', 'AutoCAD', 'SolidWorks'];
 const MODULOS_PORTAL = ['Dashboard', 'Chamados (T.I)', 'Plano de Ação', 'Implementação de Projetos', 'Importação', 'Importação V2 · Análise de Ruptura', 'Financeiro · DRE', 'Financeiro · Base', 'Financeiro · Orçado', 'SAC', 'Metas de Faturamento', 'S&OP Dashboard', 'Otimizador de Produção', 'RH / DP'];
 const PERM_OPCOES = ['Acesso administrativo a plataforma', 'Acesso a dados sensíveis', 'Aprovação de despesas', 'Assinatura em documentos legais'];
 const FIS_OPCOES = ['Crachá / Cartão de proximidade', 'Sala/área restrita', 'Vaga de estacionamento', 'Chave de armário'];
 const DEV_OPCOES = ['Notebook', 'Celular corporativo', 'Token/SmartCard', 'Crachá', 'Chave de armário', 'Veículo da empresa', 'Monitor adicional', 'Headset'];
-const BLOQ_OPCOES = ['Email corporativo', 'Portal 3LACKD', 'Office 365', 'VPN', 'Acesso remoto', 'CFTV', 'Controle de ponto', 'Bancos de dados', '4Bis', 'Chatwoot', 'StarSoft'];
+const BLOQ_OPCOES = ['Email corporativo', 'Portal EMPRESA', 'Office 365', 'VPN', 'Acesso remoto', 'CFTV', 'Controle de ponto', 'Bancos de dados', '4Bis', 'Chatwoot', 'StarSoft'];
 
 const fmtDate = (s?: string) => {
     if (!s) return '—';
@@ -303,7 +303,7 @@ const MovimentacaoModal: React.FC<{
                             <Secao titulo="🖥️ Equipamentos a solicitar">
                                 <Chips opcoes={EQUIP_OPCOES} selecionadas={dados.equipamentos || []} onToggle={(v) => toggleArr('equipamentos', v)} />
                             </Secao>
-                            <Secao titulo="🔑 Acessos do portal 3LACKD">
+                            <Secao titulo="🔑 Acessos do portal EMPRESA">
                                 <p className="text-[10px] text-slate-500 mb-1">Quais módulos do portal o usuário precisa acessar?</p>
                                 <Chips opcoes={MODULOS_PORTAL} selecionadas={dados.modulos_portal || []} onToggle={(v) => toggleArr('modulos_portal', v)} />
                             </Secao>

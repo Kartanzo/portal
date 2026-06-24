@@ -57,10 +57,10 @@ allow_origins = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:5173",
-    "https://portal.blackd.com.br",
-    "http://portal.blackd.com.br",
-    "https://portal.tecnologia-blackd.com.br",
-    "http://portal.tecnologia-blackd.com.br",
+    "https://portal.empresa.com.br",
+    "http://portal.empresa.com.br",
+    "https://portal.tecnologia-empresa.com.br",
+    "http://portal.tecnologia-empresa.com.br",
 ]
 ```
 
@@ -579,7 +579,7 @@ SMTP_PORT = 587
 
 ### Google BigQuery
 
-- **Projeto:** `projeto-rpa-blackd-2023`
+- **Projeto:** `projeto-rpa-empresa-2023`
 - **Autenticação:** Service account via `GOOGLE_APPLICATION_CREDENTIALS`
 - Usado para queries de dados analíticos e relatórios avançados
 
@@ -852,7 +852,7 @@ ALTER TABLE portal_chamado.tickets ADD COLUMN IF NOT EXISTS nova_coluna VARCHAR(
 ### Variáveis de Ambiente — Backend Homolog
 
 ```env
-DB_HOST=criadordigital_postgres
+DB_HOST=postgres-corp_postgres
 DB_PORT=5432
 DB_NAME=postgres
 DB_USER=postgres

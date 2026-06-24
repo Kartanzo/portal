@@ -1,7 +1,7 @@
 """
 Plano de Producao — endpoints + porte do otimizador PuLP.
 
-Fonte: gerar_plano_producao.py (3LACKD).
+Fonte: gerar_plano_producao.py (EMPRESA).
 Adapta carregar_dados para receber DataFrames (BigQuery direto).
 Persiste cada execucao em portal_chamado(_homolog).plano_producao_versoes.
 Retencao: 30 dias (limpeza automatica a cada gerar()).
@@ -102,8 +102,8 @@ def ensure_plano_producao_table():
 # =============================================================================
 # BIGQUERY CLIENT (mesmo padrao de sac.py / importation.py)
 # =============================================================================
-_BQ_KEY_FILE = os.path.join(os.path.dirname(__file__), "..", "projeto-rpa-blackd-2023-16b15891f73c.json")
-_BQ_PROJECT = "projeto-rpa-blackd-2023"
+_BQ_KEY_FILE = os.path.join(os.path.dirname(__file__), "..", "projeto-rpa-empresa-2023-16b15891f73c.json")
+_BQ_PROJECT = "projeto-rpa-empresa-2023"
 
 def _bq_client():
     from google.cloud import bigquery
@@ -152,7 +152,7 @@ def carregar_dados_bq() -> tuple:
         SELECT RAZAO, EMISSAO, ENTREGA, EMISSAO_ORIGINAL, PEDIDO, DESCRICAO_PRODUTO,
                CODIGO_PRODUTO, TOTAL_ITEM, QUANTIDADE, DESC_TIPODOCUMENTO,
                STATUS_PEDIDO, SITUACAO, GERENCIA_REGIONAL
-        FROM `projeto-rpa-blackd-2023.VENDAS.Metas_por_faturamento`
+        FROM `projeto-rpa-empresa-2023.VENDAS.Metas_por_faturamento`
         WHERE STATUS_PEDIDO IN ('1','4')
           AND DESC_TIPODOCUMENTO IS NOT NULL
           AND DESC_TIPODOCUMENTO NOT IN ('DISPLAY','CAMPANHAS','RAPEL','MOSTRUARIO','None','CONTRATOS')
@@ -164,7 +164,7 @@ def carregar_dados_bq() -> tuple:
         SELECT CODIGO_ITEM AS CODIGO_PRODUTO,
                SUM(DISPONIVEL) AS QUANTIDADE_DISPONIVEL,
                SUM(RESERVA) AS QUANTIDADE_RESERVA
-        FROM `projeto-rpa-blackd-2023.VENDAS.estoque_logistica`
+        FROM `projeto-rpa-empresa-2023.VENDAS.estoque_logistica`
         WHERE CODIGO_ITEM IS NOT NULL
         GROUP BY CODIGO_ITEM
     """
@@ -205,8 +205,8 @@ def otimizar(ped, est, hoje, time_limit=300, msg=False):
             return 'TROCA'
         return ''  # cliente padrão (sem cor especial)
     def _normaliza_razao(razao: str) -> str:
-        return 'INTERNO' if str(razao or '').strip() == '3LACKD PEDIDOS INTERNOS' else ''
-    # Tipo por pedido: inclui 'INTERNO' para pedidos de uso interno 3LACKD
+        return 'INTERNO' if str(razao or '').strip() == 'EMPRESA PEDIDOS INTERNOS' else ''
+    # Tipo por pedido: inclui 'INTERNO' para pedidos de uso interno EMPRESA
     tipo_por_ped_raw = {}
     if 'DESC_TIPODOCUMENTO' in ped.columns:
         for _, row_t in ped[['PEDIDO','DESC_TIPODOCUMENTO','RAZAO']].drop_duplicates().iterrows():
@@ -1252,7 +1252,7 @@ def _gerar_html_plano(hoje_str: str, totais: dict, plano: list,
   {_table(pedidos_completos, max_rows=300)}
   <h2 class="h5 mt-4">Detalhe Alocacao Estoque</h2>
   {_table(detalhe_alocacao, max_rows=500)}
-  <p class="text-muted small mt-4">Gerado pelo Portal 3LACKD.</p>
+  <p class="text-muted small mt-4">Gerado pelo Portal EMPRESA.</p>
 </div>
 </body>
 </html>"""

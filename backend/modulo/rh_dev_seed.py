@@ -137,7 +137,7 @@ def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
             (
                 nome,
                 f"{random.randint(100, 999)}.{random.randint(100, 999)}.{random.randint(100, 999)}-{random.randint(10, 99)}",
-                f"colab{i+1}@blackd.com.br",
+                f"colab{i+1}@empresa.com.br",
                 f"(11) 9{random.randint(1000, 9999)}-{random.randint(1000, 9999)}",
                 f"{1000 + i:04d}",
                 random.choice(CARGOS),
@@ -278,7 +278,7 @@ def seed_dummy(user_id: Optional[str] = Depends(get_user_id_from_session)):
     SISTEMAS_EXTERNOS = ['4Bis', 'Chatwoot', 'StarSoft', 'Krayin (CRM)', 'WAHA (WhatsApp)', 'BigQuery', 'Looker Studio', 'Conta Azul']
     MODULOS_PORTAL = ['Dashboard', 'Chamados (T.I)', 'Importação V2 · Análise de Ruptura', 'SAC', 'Metas de Faturamento', 'RH / DP', 'Otimizador de Produção']
     EQUIP = ['Notebook médio (i5/8GB)', 'Monitor adicional', 'Headset com microfone', 'Celular corporativo']
-    ACESSOS = ['Email @blackd.com.br', 'Office 365', 'VPN']
+    ACESSOS = ['Email @empresa.com.br', 'Office 365', 'VPN']
     BLOQ = ['Email corporativo', 'Office 365', 'VPN', 'Acesso remoto', '4Bis', 'Chatwoot', 'StarSoft']
     URG = ["normal", "normal", "importante", "urgente"]
     STATUS_MOV = ["pendente", "aprovado", "aprovado", "aprovado", "rejeitado"]

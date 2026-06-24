@@ -9,7 +9,7 @@ import KpiCard, { KpiGrid } from '../common/KpiCard';
 import { useTablePrefs, SortHeader, sortRows } from '../../hooks/useTablePrefs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { aplicarLayoutBlackd, temaTabelaBlackd, 3LACKD_ACCENT } from '../exportUtils';
+import { aplicarLayoutEmpresa, temaTabelaEmpresa, EMPRESA_ACCENT } from '../exportUtils';
 
 // ──────────────────────────────────────────────────────────
 //  Análise de Crédito — consultas de bureau por CNPJ.
@@ -428,14 +428,14 @@ const DetalheModal: React.FC<{ id: string; onClose: () => void }> = ({ id, onClo
   const toggle = (sec: string) => setAberto(p => ({ ...p, [sec]: !(p[sec] ?? false) }));
   const estaAberto = (sec: string, _idx: number) => aberto[sec] ?? true;
 
-  // Gera PDF do detalhe usando o layout padrão do portal (header/rodapé/logo 3LACKD).
+  // Gera PDF do detalhe usando o layout padrão do portal (header/rodapé/logo EMPRESA).
   const gerarPDF = async () => {
     if (!data) return;
     setGerando(true);
     try {
       const doc = new jsPDF({ unit: 'mm', format: 'a4' });
       const W = doc.internal.pageSize.getWidth();
-      const { finalizar } = await aplicarLayoutBlackd(doc, {
+      const { finalizar } = await aplicarLayoutEmpresa(doc, {
         titulo: `Análise de Crédito${data.razao_social ? ' — ' + data.razao_social : ''}`,
         subtitulo: `${fmtCnpj(data.cnpj)} · ${fmtData(data.data_iso, data.data_consulta)} · ${data.tipo === 'completo' ? 'Resultado Completo' : 'Resultado Maxi'}`,
       });
@@ -443,7 +443,7 @@ const DetalheModal: React.FC<{ id: string; onClose: () => void }> = ({ id, onClo
       for (const g of grupos as any[]) {
         if (y > 262) { doc.addPage(); y = 34; }
         // banda colorida da seção
-        doc.setFillColor(...3LACKD_ACCENT); doc.rect(10, y, W - 20, 7, 'F');
+        doc.setFillColor(...EMPRESA_ACCENT); doc.rect(10, y, W - 20, 7, 'F');
         doc.setTextColor(255); doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
         doc.text(String(g.secao), 13, y + 4.9); y += 9;
         for (const t of g.tabelas as any[]) {
@@ -451,7 +451,7 @@ const DetalheModal: React.FC<{ id: string; onClose: () => void }> = ({ id, onClo
             startY: y,
             head: [t.cols.map((c: string) => _titulo(c))],
             body: t.rows.map((r: any) => t.cols.map((c: string) => fmtCell(String(r[c] ?? '')))),
-            ...temaTabelaBlackd,
+            ...temaTabelaEmpresa,
           });
           y = (doc as any).lastAutoTable.finalY + 3;
         }
@@ -461,7 +461,7 @@ const DetalheModal: React.FC<{ id: string; onClose: () => void }> = ({ id, onClo
             head: [['Campo', 'Valor']],
             body: g.simples.map(([k, v]: [string, any]) => [prettify(k), fmtCell(String(v ?? ''))]),
             columnStyles: { 0: { cellWidth: (W - 20) * 0.4, fontStyle: 'bold' as const } },
-            ...temaTabelaBlackd,
+            ...temaTabelaEmpresa,
           });
           y = (doc as any).lastAutoTable.finalY + 4;
         }

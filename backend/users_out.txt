@@ -1,5 +1,5 @@
 Name: Super Admin TI | Role: super_user | Sector: T.I | Perms: {}
-Name: DANIEL ALVAREZ | Role: admin | Sector: T.I | Perms: {'tickets': {'can_edit': True}}
-Name: Diego Teixeira | Role: user | Sector: Gestão de Informação | Perms: {}
-Name: THIAGO NORONHA | Role: super_user | Sector: Gestão de Informação | Perms: {}
-Name: DIEGO TEIXEIRA | Role: super_user | Sector: Gestão de Informação | Perms: {}
+Name: Usuário 7 | Role: admin | Sector: T.I | Perms: {'tickets': {'can_edit': True}}
+Name: Usuário 1 | Role: user | Sector: Gestão de Informação | Perms: {}
+Name: Usuário 2 | Role: super_user | Sector: Gestão de Informação | Perms: {}
+Name: Usuário 1 | Role: super_user | Sector: Gestão de Informação | Perms: {}

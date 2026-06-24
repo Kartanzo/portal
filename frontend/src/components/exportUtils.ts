@@ -5,7 +5,7 @@ import autoTable from 'jspdf-autotable';
 import { ActionPlanItem } from '../types';
 
 /* ============================================================================
- * PADRAO OFICIAL DE PDF DO PORTAL 3LACKD
+ * PADRAO OFICIAL DE PDF DO PORTAL EMPRESA
  * ----------------------------------------------------------------------------
  * Este e o layout padrao de TODOS os PDFs do portal, extraido do modelo da
  * Dashboard da Fabrica (S&OP) e da Programacao de Producao.
@@ -16,26 +16,26 @@ import { ActionPlanItem } from '../types';
  *
  * Uso tipico:
  *   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
- *   const layout = await aplicarLayoutBlackd(doc, { titulo: 'Meu Relatorio', subtitulo: '...' });
- *   autoTable(doc, { startY: 35, head, body, ...temaTabelaBlackd });
+ *   const layout = await aplicarLayoutEmpresa(doc, { titulo: 'Meu Relatorio', subtitulo: '...' });
+ *   autoTable(doc, { startY: 35, head, body, ...temaTabelaEmpresa });
  *   layout.finalizar(); // carimba header+footer em todas as paginas
  *   doc.save('arquivo.pdf');
  * ==========================================================================*/
 
-/** Cor de destaque vermelha 3LACKD (RGB). */
-export const 3LACKD_ACCENT: [number, number, number] = [231, 76, 60];
+/** Cor de destaque vermelha EMPRESA (RGB). */
+export const EMPRESA_ACCENT: [number, number, number] = [231, 76, 60];
 /** Cor escura (slate-800) usada em titulos e cabecalho de tabela. */
-export const 3LACKD_DARK: [number, number, number] = [30, 41, 59];
+export const EMPRESA_DARK: [number, number, number] = [30, 41, 59];
 /** Cor suave (slate-100) usada no rodape de tabelas/totais. */
-export const 3LACKD_SOFT: [number, number, number] = [241, 245, 249];
+export const EMPRESA_SOFT: [number, number, number] = [241, 245, 249];
 
 /**
- * Carrega o logo oficial 3LACKD (public/Logo-3LACKD.png) como dataURL base64.
+ * Carrega o logo oficial EMPRESA (public/Logo-EMPRESA.png) como dataURL base64.
  * Retorna null se nao for possivel carregar (PDF segue sem logo).
  */
-export const carregarLogoBlackd = async (): Promise<string | null> => {
+export const carregarLogoEmpresa = async (): Promise<string | null> => {
     try {
-        const resp = await fetch('/Logo-3LACKD.png');
+        const resp = await fetch('/Logo-EMPRESA.png');
         const blob = await resp.blob();
         return await new Promise<string>((res) => {
             const r = new FileReader();
@@ -48,49 +48,49 @@ export const carregarLogoBlackd = async (): Promise<string | null> => {
 };
 
 /**
- * Desenha o cabecalho padrao 3LACKD: barra vermelha no topo, cartao do logo,
+ * Desenha o cabecalho padrao EMPRESA: barra vermelha no topo, cartao do logo,
  * titulo, subtitulo (opcional), data de geracao e linha vermelha separadora.
  */
-export const blackdPdfHeader = (
+export const empresaPdfHeader = (
     doc: jsPDF,
     opts: { titulo: string; subtitulo?: string; logoB64?: string | null }
 ) => {
     const W = doc.internal.pageSize.getWidth();
-    doc.setFillColor(...3LACKD_ACCENT);
+    doc.setFillColor(...EMPRESA_ACCENT);
     doc.rect(0, 0, W, 3, 'F');
     if (opts.logoB64) {
-        doc.setFillColor(...3LACKD_ACCENT);
+        doc.setFillColor(...EMPRESA_ACCENT);
         doc.roundedRect(8, 6, 46, 18, 2, 2, 'F');
         try { doc.addImage(opts.logoB64, 'PNG', 10, 8, 42, 14); } catch { /* */ }
     }
-    doc.setTextColor(...3LACKD_DARK);
+    doc.setTextColor(...EMPRESA_DARK);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
     doc.text(opts.titulo, 60, 14);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
     doc.setTextColor(100, 116, 139);
     if (opts.subtitulo) doc.text(opts.subtitulo, 60, 19);
     doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`, 60, 23);
-    doc.setDrawColor(...3LACKD_ACCENT); doc.setLineWidth(0.4);
+    doc.setDrawColor(...EMPRESA_ACCENT); doc.setLineWidth(0.4);
     doc.line(10, 28, W - 10, 28);
 };
 
 /**
- * Desenha o rodape padrao 3LACKD: linha vermelha, texto da empresa,
+ * Desenha o rodape padrao EMPRESA: linha vermelha, texto da empresa,
  * numeracao de pagina e triangulo vermelho no canto inferior direito.
  */
-export const blackdPdfFooter = (
+export const empresaPdfFooter = (
     doc: jsPDF,
     opts: { pagina: number; totalPaginas: number; rodapeTexto?: string }
 ) => {
     const W = doc.internal.pageSize.getWidth();
     const H = doc.internal.pageSize.getHeight();
-    doc.setDrawColor(...3LACKD_ACCENT); doc.setLineWidth(0.5);
+    doc.setDrawColor(...EMPRESA_ACCENT); doc.setLineWidth(0.5);
     doc.line(10, H - 10, W - 10, H - 10);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
     doc.setTextColor(120, 120, 120);
-    doc.text(opts.rodapeTexto || '3LACKD — Portal Corporativo', 10, H - 5);
+    doc.text(opts.rodapeTexto || 'EMPRESA — Portal Corporativo', 10, H - 5);
     doc.text(`Página ${opts.pagina} de ${opts.totalPaginas}`, W - 10, H - 5, { align: 'right' });
-    doc.setFillColor(...3LACKD_ACCENT);
+    doc.setFillColor(...EMPRESA_ACCENT);
     doc.triangle(W, H, W - 10, H, W, H - 10, 'F');
 };
 
@@ -99,33 +99,33 @@ export const blackdPdfFooter = (
  * carimba cabecalho + rodape padrao em TODAS as paginas do documento.
  * Chame APOS gerar todo o conteudo (autoTable etc.), antes de doc.save().
  */
-export const aplicarLayoutBlackd = async (
+export const aplicarLayoutEmpresa = async (
     doc: jsPDF,
     opts: { titulo: string; subtitulo?: string; rodapeTexto?: string }
 ): Promise<{ logoB64: string | null; finalizar: () => void }> => {
-    const logoB64 = await carregarLogoBlackd();
+    const logoB64 = await carregarLogoEmpresa();
     const finalizar = () => {
         const total = doc.getNumberOfPages();
         for (let i = 1; i <= total; i++) {
             doc.setPage(i);
-            blackdPdfHeader(doc, { titulo: opts.titulo, subtitulo: opts.subtitulo, logoB64 });
-            blackdPdfFooter(doc, { pagina: i, totalPaginas: total, rodapeTexto: opts.rodapeTexto });
+            empresaPdfHeader(doc, { titulo: opts.titulo, subtitulo: opts.subtitulo, logoB64 });
+            empresaPdfFooter(doc, { pagina: i, totalPaginas: total, rodapeTexto: opts.rodapeTexto });
         }
     };
     return { logoB64, finalizar };
 };
 
 /**
- * Tema padrao de tabela (autoTable) 3LACKD: cabecalho escuro, zebra (striped),
+ * Tema padrao de tabela (autoTable) EMPRESA: cabecalho escuro, zebra (striped),
  * fonte helvetica e rodape suave para totais. Espalhe no objeto do autoTable:
- *   autoTable(doc, { startY: 35, head, body, ...temaTabelaBlackd });
+ *   autoTable(doc, { startY: 35, head, body, ...temaTabelaEmpresa });
  * Para usar margem que respeita o cabecalho, ja inclui margin.top: 32.
  */
-export const temaTabelaBlackd = {
+export const temaTabelaEmpresa = {
     theme: 'striped' as const,
     styles: { font: 'helvetica' as const, fontSize: 8, cellPadding: 2, overflow: 'linebreak' as const },
-    headStyles: { fillColor: 3LACKD_DARK, textColor: 255 as 255, fontSize: 8 },
-    footStyles: { fillColor: 3LACKD_SOFT, textColor: 3LACKD_DARK, fontStyle: 'bold' as const },
+    headStyles: { fillColor: EMPRESA_DARK, textColor: 255 as 255, fontSize: 8 },
+    footStyles: { fillColor: EMPRESA_SOFT, textColor: EMPRESA_DARK, fontStyle: 'bold' as const },
     margin: { top: 32, left: 10, right: 10 },
 };
 

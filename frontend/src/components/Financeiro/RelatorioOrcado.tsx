@@ -7,7 +7,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { MobileLandscapeHint } from '../ui/MobileLandscapeHint';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { aplicarLayoutBlackd } from '../exportUtils';
+import { aplicarLayoutEmpresa } from '../exportUtils';
 
 interface RelatorioOrcadoProps {
     user: any;
@@ -141,10 +141,10 @@ const RelatorioOrcado: React.FC<RelatorioOrcadoProps> = ({ user }) => {
         const baseObj = bases.find(b => b.id === selectedBase);
         const baseLabel = baseObj ? baseObj.version_name : selectedBase;
 
-        const layout = await aplicarLayoutBlackd(doc, {
+        const layout = await aplicarLayoutEmpresa(doc, {
             titulo: 'Relatório Gerencial - Orçado',
             subtitulo: `Competência: ${baseLabel}`,
-            rodapeTexto: '3LACKD — Relatório Orçado (Financeiro)',
+            rodapeTexto: 'EMPRESA — Relatório Orçado (Financeiro)',
         });
 
         const head = [['Descrição', ...columnGroups.map(g => g.label), 'Total']];
@@ -201,10 +201,10 @@ const RelatorioOrcado: React.FC<RelatorioOrcadoProps> = ({ user }) => {
 
     const exportDrillDownToPDF = async () => {
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        const layout = await aplicarLayoutBlackd(doc, {
+        const layout = await aplicarLayoutEmpresa(doc, {
             titulo: 'Detalhamento do Orçamento',
             subtitulo: `${drillDownParams.rowLabel} - ${drillDownParams.month}`,
-            rodapeTexto: '3LACKD — Relatório Orçado (Financeiro)',
+            rodapeTexto: 'EMPRESA — Relatório Orçado (Financeiro)',
         });
 
         const head = [['Conta', 'Descrição', 'Grupo', 'Valor', '%']];

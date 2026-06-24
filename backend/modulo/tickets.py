@@ -486,7 +486,7 @@ def create_ticket(
                         </div>
                     </div>
                     <div style="background-color: #f8f8f8; padding: 16px; text-align: center; font-size: 12px; color: #888888; border-top: 1px solid #e0e0e0;">
-                        <p style="margin: 0;">Sistema de Chamados 3LACKD</p>
+                        <p style="margin: 0;">Sistema de Chamados EMPRESA</p>
                     </div>
                 </div>
              """

@@ -5,7 +5,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: blackd-backend
+    container_name: empresa-backend
     ports:
       - "8000:8000"
     volumes:
@@ -18,7 +18,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.frontend
-    container_name: blackd-frontend
+    container_name: empresa-frontend
     ports:
       - "8080:80" # Maps localhost:8080 to container port 80
     depends_on:

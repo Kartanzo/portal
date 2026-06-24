@@ -79,7 +79,7 @@ def ensure_catalogo_tables():
             CREATE TABLE IF NOT EXISTS catalogo_modelo (
                 id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 nome            VARCHAR(120) NOT NULL,
-                titulo_pagina   VARCHAR(160) NOT NULL DEFAULT 'Catálogo 3LACKD 2026',
+                titulo_pagina   VARCHAR(160) NOT NULL DEFAULT 'Catálogo EMPRESA 2026',
                 subtitulo       TEXT,
                 ano             INTEGER NOT NULL DEFAULT 2026,
                 oficial         BOOLEAN NOT NULL DEFAULT FALSE,
@@ -148,7 +148,7 @@ def ensure_catalogo_tables():
 # ─────────────────────────────────────────────
 class ModeloCreate(BaseModel):
     nome: str
-    titulo_pagina: Optional[str] = "Catálogo 3LACKD 2026"
+    titulo_pagina: Optional[str] = "Catálogo EMPRESA 2026"
     subtitulo: Optional[str] = None
     ano: Optional[int] = 2026
     colunas_ficha: Optional[List[str]] = None
@@ -486,7 +486,7 @@ def criar_modelo(payload: ModeloCreate, user_id: Optional[str] = Depends(get_use
                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id::text""",
             (
                 payload.nome,
-                payload.titulo_pagina or "Catálogo 3LACKD 2026",
+                payload.titulo_pagina or "Catálogo EMPRESA 2026",
                 payload.subtitulo,
                 payload.ano or 2026,
                 json.dumps(payload.colunas_ficha or [], ensure_ascii=False),

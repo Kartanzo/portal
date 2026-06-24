@@ -7,7 +7,7 @@ const API_PREFIX = API_URL;
 
 function getAuthHeaders(): Record<string, string> {
     try {
-        const saved = sessionStorage.getItem('blackd_user');
+        const saved = sessionStorage.getItem('empresa_user');
         if (saved) {
             const parsed = JSON.parse(saved);
             if (parsed?.id) return { 'user-id': String(parsed.id) };
@@ -74,7 +74,7 @@ export const api = {
     },
     comissaoDocUrl(docId: string): string {
         let uid = '';
-        try { const s = sessionStorage.getItem('blackd_user'); if (s) { const pp = JSON.parse(s); if (pp?.id) uid = String(pp.id); } } catch { /* */ }
+        try { const s = sessionStorage.getItem('empresa_user'); if (s) { const pp = JSON.parse(s); if (pp?.id) uid = String(pp.id); } } catch { /* */ }
         return `${API_PREFIX}/financeiro/comissao/documento/${docId}?_uid=${encodeURIComponent(uid)}`;
     },
     async comissaoUploadDoc(regId: string, file: File) {
@@ -1506,7 +1506,7 @@ export const api = {
             .toLowerCase()
             .replace(/[\s_/.\-º°"']/g, '');
         const findIdx = (opts: Set<string>) => headers.findIndex(h => opts.has(norm(h)));
-        const idxCod = findIdx(new Set(['itemno', 'item', 'codigo', 'cod', 'codigoblackd', 'codblackd', 'codprod', 'codproduto', 'codigoproduto', 'sku']));
+        const idxCod = findIdx(new Set(['itemno', 'item', 'codigo', 'cod', 'codigoempresa', 'codempresa', 'codprod', 'codproduto', 'codigoproduto', 'sku']));
         const idxMoq = findIdx(new Set(['moq', 'lotemin', 'loteminimo', 'qtdmin', 'qtdminima', 'minorderquantity']));
         const idxDesc = findIdx(new Set(['description', 'descricao', 'descricaoproduto', 'descricaodoproduto']));
         // Campos adicionais (todos opcionais)

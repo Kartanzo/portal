@@ -1,4 +1,4 @@
--- Migration: metadados das figurinhas (estilo Panini) no álbum "Seleção 3LACKD"
+-- Migration: metadados das figurinhas (estilo Panini) no álbum "Seleção EMPRESA"
 -- Aplica-se ao schema corrente (portal_chamado ou portal_chamado_homolog)
 -- Defensivo: ADD COLUMN IF NOT EXISTS
 

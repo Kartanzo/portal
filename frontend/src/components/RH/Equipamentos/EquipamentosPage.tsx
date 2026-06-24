@@ -934,7 +934,7 @@ const NovoEquipamentoModal: React.FC<{ onClose: () => void; onSaved: () => void 
 
 const SISTEMAS_SUGESTOES = ['4Bis', 'Chatwoot', 'StarSoft', 'Krayin (CRM)', 'WAHA (WhatsApp)', 'BigQuery', 'Looker Studio', 'Conta Azul', 'WMS', 'PCP', 'AutoCAD', 'SolidWorks'];
 const MODULOS_SUGESTOES = ['Dashboard', 'Chamados (T.I)', 'Plano de Ação', 'Importação V2', 'Financeiro · DRE', 'SAC', 'Metas de Faturamento', 'S&OP Dashboard', 'Otimizador de Produção', 'RH / DP'];
-const ACESSOS_SUGESTOES = ['Email @blackd.com.br', 'Office 365', 'Google Workspace', 'VPN', 'Acesso remoto/RDP', 'CFTV', 'Controle de ponto'];
+const ACESSOS_SUGESTOES = ['Email @empresa.com.br', 'Office 365', 'Google Workspace', 'VPN', 'Acesso remoto/RDP', 'CFTV', 'Controle de ponto'];
 
 const AcessosTab: React.FC<{ info: any; cid: number; onChange: () => void }> = ({ info, cid }) => {
     const toast = useToast();

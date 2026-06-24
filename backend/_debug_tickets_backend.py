@@ -5,7 +5,7 @@ conn = get_db_connection()
 cur = conn.cursor()
 
 # Get Daniel's user context
-cur.execute("SELECT id FROM users WHERE name = 'DANIEL ALVAREZ'")
+cur.execute("SELECT id FROM users WHERE name = 'Usuário 7'")
 daniel_id = str(cur.fetchone()[0])
 
 context = get_user_context(daniel_id, conn)

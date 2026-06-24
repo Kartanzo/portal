@@ -29,10 +29,10 @@ SELECT CODIGO_PRODUTO AS Codigo,
   EXTRACT(YEAR FROM SAFE_CAST(EMISSAO_faturamento AS DATETIME)) AS Ano,
   EXTRACT(MONTH FROM SAFE_CAST(EMISSAO_faturamento AS DATETIME)) AS Mes,
   SUM(SAFE_CAST(QUANTIDADE_UTILIZADANANOTAFISCAL AS FLOAT64)) AS Qtd_Faturada
-FROM `projeto-rpa-blackd-2023.VENDAS.Controle_de_logistica_carteira`
+FROM `projeto-rpa-empresa-2023.VENDAS.Controle_de_logistica_carteira`
 WHERE EXTRACT(YEAR FROM SAFE_CAST(EMISSAO_faturamento AS DATETIME)) = EXTRACT(YEAR FROM CURRENT_DATE())
   AND status_descricao IN ('5 - Liberado', '5 - Liberado e Inutilizado', '6 - Parcial')
-  AND UPPER(COALESCE(RAZAO, '')) NOT LIKE '%3LACKD PEDIDOS INTERNOS%'
+  AND UPPER(COALESCE(RAZAO, '')) NOT LIKE '%EMPRESA PEDIDOS INTERNOS%'
   AND DESC_TIPODOCUMENTO NOT IN ('TROCA', 'SAC', 'DISPLAY', 'BONIFICACAO', 'CAMPANHAS', 'RAPEL', 'MOSTRUARIO', 'None', 'CONTRATOS')
   AND CODIGO_PRODUTO LIKE '104%'
 GROUP BY 1, 2, 3
@@ -51,7 +51,7 @@ def get_bq_client():
     # Tenta CREDENTIALS_PATH e arquivos comuns
     candidates = [
         CREDENTIALS_PATH,
-        os.path.join(os.path.dirname(__file__), 'projeto-rpa-blackd-2023-16b15891f73c.json'),
+        os.path.join(os.path.dirname(__file__), 'projeto-rpa-empresa-2023-16b15891f73c.json'),
         os.path.join(os.path.dirname(__file__), 'cred.json'),
     ]
     for path in candidates:
@@ -135,7 +135,7 @@ def main():
                   'https://www.googleapis.com/auth/drive.readonly']
         creds_path = None
         for path in [CREDENTIALS_PATH,
-                     os.path.join(os.path.dirname(__file__), 'projeto-rpa-blackd-2023-16b15891f73c.json'),
+                     os.path.join(os.path.dirname(__file__), 'projeto-rpa-empresa-2023-16b15891f73c.json'),
                      os.path.join(os.path.dirname(__file__), 'cred.json')]:
             if path and os.path.exists(path):
                 creds_path = path

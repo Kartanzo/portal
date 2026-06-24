@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS catalogo_biblioteca (
 CREATE TABLE IF NOT EXISTS catalogo_modelo (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nome            VARCHAR(120) NOT NULL,
-    titulo_pagina   VARCHAR(160) NOT NULL DEFAULT 'Catálogo 3LACKD 2026',
+    titulo_pagina   VARCHAR(160) NOT NULL DEFAULT 'Catálogo EMPRESA 2026',
     subtitulo       TEXT,
     ano             INTEGER NOT NULL DEFAULT 2026,
     oficial         BOOLEAN NOT NULL DEFAULT FALSE,

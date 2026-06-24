@@ -18,11 +18,11 @@ DL = r"C:\Users\TI04\Downloads"
 MARK = 'import_planilhas'
 
 FILES = {
-    'impressao': os.path.join(DL, 'Controle_Contadores_Impressao_blackd.xlsx'),
+    'impressao': os.path.join(DL, 'Controle_Contadores_Impressao_empresa.xlsx'),
     'voz_ip':    os.path.join(DL, 'Aparelhos Voz_IP.xlsx'),
     'daniel':    os.path.join(DL, 'Atual_Inventario de Daniel.xls'),
     'celulares': os.path.join(DL, 'Controle de Celulares (usados).xlsx'),
-    'vivo':      os.path.join(DL, 'NUMEROS_VIVO_3LACKD.xlsx'),
+    'vivo':      os.path.join(DL, 'NUMEROS_VIVO_EMPRESA.xlsx'),
 }
 
 # ---------- env ----------
@@ -125,7 +125,7 @@ def parse_all():
                          nome_estacao=clean(r.get('Nome Estação')), observacoes=clean(r.get('Observações')),
                          atributos=attrs({'fonte': '2022-2026', 'rev': r.get('REV.'), 'bios_tag': r.get('Bios TAG'),
                                           'mac_cabeada': r.get('MAC Rede Cabeada'), 'mac_semfio': r.get('MAC Rede Sem Fio'),
-                                          'dominio': r.get('3LACKD Domain'), 'hard_drive': r.get('Hard Drive'),
+                                          'dominio': r.get('EMPRESA Domain'), 'hard_drive': r.get('Hard Drive'),
                                           'capacidade': r.get('Capacidade'), 'hardware': r.get('Hardware'),
                                           'linha': r.get('Linha'), 'processador': r.get('Processador'),
                                           'memoria': r.get('Memoria'), 'so_instalado': r.get('S.O. Instalado'),
@@ -188,7 +188,7 @@ def parse_all():
         key = only_digits(num)
         linhas[key] = dict(tipo='linha_movel', numero_linha=num, usuario_nome=clean(r.get('USUARIO')),
                            setor=clean(r.get('SETOR')), observacoes=clean(r.get('OBS')),
-                           atributos=attrs({'aparelho_blackd': r.get('APARELHO_3LACKD'),
+                           atributos=attrs({'aparelho_empresa': r.get('APARELHO_EMPRESA'),
                                             'registro_vivo': r.get('registro_vivo'), 'contador': r.get('contador')}))
     df = read('vivo', 'VIVO_LINHAS_REGISTRADAS', 0)
     df.columns = [str(c).strip() for c in df.columns]

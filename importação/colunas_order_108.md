@@ -1,6 +1,6 @@
 # Colunas - Order List 108
 
-- Codigo 3LACKD = codigo do item
+- Codigo EMPRESA = codigo do item
 - PHOTO NO = numero da foto
 - Barcode Number = codigo de barras
 - DESCRIPTION = descricao

@@ -5,7 +5,7 @@ import { Receipt, RefreshCw, Search, Save, SlidersHorizontal, Trash2, AlertTrian
 import KpiCard, { KpiGrid } from '../common/KpiCard';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { aplicarLayoutBlackd, temaTabelaBlackd } from '../exportUtils';
+import { aplicarLayoutEmpresa, temaTabelaEmpresa } from '../exportUtils';
 import { useFiltroPersistente } from '../../hooks/useFiltroPersistente';
 
 const fmtMoney = (v?: number | null) =>
@@ -457,7 +457,7 @@ const OtimizadorFaturamento: React.FC = () => {
     // Só usuários da Logística (ou super_user/ceo) podem definir a versão oficial.
     const podeOficial = useMemo(() => {
         try {
-            const u = JSON.parse(sessionStorage.getItem('blackd_user') || '{}');
+            const u = JSON.parse(sessionStorage.getItem('empresa_user') || '{}');
             if (['super_user', 'ceo'].includes(u.role)) return true;
             const norm = (s: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
             return [u.sector, ...String(u.managed_sectors || '').split(/[;,]/)].some((s: string) => norm(s) === norm('Logística'));
@@ -825,8 +825,8 @@ const OtimizadorFaturamento: React.FC = () => {
                 body.push(row);
             });
         });
-        const { finalizar } = await aplicarLayoutBlackd(doc, { titulo: 'Otimizador de Faturamento', subtitulo: `${totais.n_pedidos_faturaveis || 0} pedidos faturáveis · ${fmtMoney(totais.valor_faturavel)}` });
-        autoTable(doc, { startY: 35, head, body, ...temaTabelaBlackd });
+        const { finalizar } = await aplicarLayoutEmpresa(doc, { titulo: 'Otimizador de Faturamento', subtitulo: `${totais.n_pedidos_faturaveis || 0} pedidos faturáveis · ${fmtMoney(totais.valor_faturavel)}` });
+        autoTable(doc, { startY: 35, head, body, ...temaTabelaEmpresa });
         finalizar();
         doc.save(`faturamento_${new Date().toLocaleDateString('en-CA')}.pdf`);
     };

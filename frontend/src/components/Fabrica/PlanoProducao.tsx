@@ -64,7 +64,7 @@ const TIPO_COR: Record<string, string> = {
     BONIFICACAO: '#f59e0b',  // amarelo/âmbar
     TROCA: '#f97316',        // laranja
     PENDENTE_FINANCEIRO: '#7c3aed', // roxo
-    INTERNO: '#059669',      // verde — 3LACKD Pedidos Internos
+    INTERNO: '#059669',      // verde — EMPRESA Pedidos Internos
 };
 const COR_PADRAO = '#2563eb'; // azul — cliente padrão
 const GRUPO_INFO: Record<string, { label: string; cor: string }> = {
@@ -259,7 +259,7 @@ const PlanoProducao: React.FC = () => {
     // Só usuários da Fábrica (ou super_user/ceo) podem definir a versão oficial.
     const podeOficial = useMemo(() => {
         try {
-            const u = JSON.parse(sessionStorage.getItem('blackd_user') || '{}');
+            const u = JSON.parse(sessionStorage.getItem('empresa_user') || '{}');
             if (['super_user', 'ceo'].includes(u.role)) return true;
             const norm = (s: string) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
             return [u.sector, ...String(u.managed_sectors || '').split(/[;,]/)].some((s: string) => norm(s) === norm('Fábrica'));
@@ -738,7 +738,7 @@ const PlanoProducao: React.FC = () => {
                                     { k: 'TROCA', label: 'Troca', cor: TIPO_COR.TROCA, count: tipoCounts.TROCA ?? 0 },
                                     { k: 'PADRAO', label: 'Cliente padrão', cor: COR_PADRAO, count: tipoCounts.PADRAO ?? 0 },
                                     { k: 'PENDENTE_FINANCEIRO', label: 'Pendente Liberação Financeiro', cor: TIPO_COR.PENDENTE_FINANCEIRO, count: tipoCounts.PENDENTE_FINANCEIRO ?? 0 },
-                                    { k: 'INTERNO', label: '3LACKD Interno', cor: TIPO_COR.INTERNO, count: tipoCounts.INTERNO ?? 0 },
+                                    { k: 'INTERNO', label: 'EMPRESA Interno', cor: TIPO_COR.INTERNO, count: tipoCounts.INTERNO ?? 0 },
                                 ]}
                             />
                             <MultiSelectDropdown
@@ -1066,7 +1066,7 @@ const PlanoProducao: React.FC = () => {
                                         { k: 'TROCA', cor: TIPO_COR.TROCA, label: 'Troca' },
                                         { k: 'PENDENTE_FINANCEIRO', cor: TIPO_COR.PENDENTE_FINANCEIRO, label: 'Pend. Financeiro' },
                                         { k: 'PADRAO', cor: COR_PADRAO, label: 'Cliente padrão' },
-                                        { k: 'INTERNO', cor: TIPO_COR.INTERNO, label: '3LACKD Interno' },
+                                        { k: 'INTERNO', cor: TIPO_COR.INTERNO, label: 'EMPRESA Interno' },
                                     ].map(l => (
                                         <button
                                             key={l.k}

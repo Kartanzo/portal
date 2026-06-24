@@ -1,5 +1,5 @@
 /**
- * EventosAlbum — Álbum de figurinhas "Seleção 3LACKD" (estilo Panini).
+ * EventosAlbum — Álbum de figurinhas "Seleção EMPRESA" (estilo Panini).
  * Porte fiel do modelo copa/album.js, dirigido pelas fotos do banco
  * (nome/posicao/numero/craque/obj_position definidos pelo Marketing).
  */
@@ -14,7 +14,7 @@ type Foto = {
 
 function authHeaders(): Record<string, string> {
   try {
-    const saved = sessionStorage.getItem('blackd_user');
+    const saved = sessionStorage.getItem('empresa_user');
     if (saved) {
       const parsed = JSON.parse(saved);
       if (parsed?.id) return { 'user-id': String(parsed.id) };
@@ -25,7 +25,7 @@ function authHeaders(): Record<string, string> {
 
 function photoSrc(id: string): string {
   try {
-    const saved = sessionStorage.getItem('blackd_user');
+    const saved = sessionStorage.getItem('empresa_user');
     if (saved) {
       const parsed = JSON.parse(saved);
       if (parsed?.id) return `/api/eventos/fotos/${id}?_uid=${encodeURIComponent(String(parsed.id))}`;
@@ -122,7 +122,7 @@ const EventosAlbum: React.FC = () => {
           <div class="stk gold special" data-special="1">
             <div class="stk-in">
               <div class="stk-photo"><img class="specialflag" src="/eventos/bandeira-brasil.png" alt="Brasil"></div>
-              <div class="stk-bar"><div class="nk">Brasil</div><div class="ps">Seleção 3LACKD</div></div>
+              <div class="stk-bar"><div class="nk">Brasil</div><div class="ps">Seleção EMPRESA</div></div>
               <div class="holo"></div><div class="shine"></div>
             </div>
           </div></div>`;
@@ -149,8 +149,8 @@ const EventosAlbum: React.FC = () => {
     }
 
     function paniniPage(cells: (Foto | null)[], pageNo: number, comSpecial: boolean) {
-      const titulo = comSpecial ? 'Seleção 3LACKD' : 'Convocados';
-      const sub = comSpecial ? 'Elenco Oficial · 2026' : 'Seleção 3LACKD · Brasil';
+      const titulo = comSpecial ? 'Seleção EMPRESA' : 'Convocados';
+      const sub = comSpecial ? 'Elenco Oficial · 2026' : 'Seleção EMPRESA · Brasil';
       let i = 0;
       const html = cells.map((c) => {
         const isSpecial = comSpecial && i === 0;
@@ -164,7 +164,7 @@ const EventosAlbum: React.FC = () => {
         </div>
         <div class="pp-flag"><i class="g"></i><i class="r"></i><i class="w"></i></div>
         <div class="grid">${html}</div>
-        <div class="pg-num">Seleção 3LACKD · ${String(pageNo).padStart(2, '0')}</div>
+        <div class="pg-num">Seleção EMPRESA · ${String(pageNo).padStart(2, '0')}</div>
       </div>`;
     }
 
@@ -176,9 +176,9 @@ const EventosAlbum: React.FC = () => {
         <div class="tex"></div><div class="rays"></div>
         <span class="kick">Álbum Oficial de Figurinhas</span>
         <div class="flaghero"><img class="bigflag" src="/eventos/bandeira-brasil.png" alt="Bandeira do Brasil"></div>
-        <div class="wm"><h1>3LACKD</h1><div class="tagbr">Seleção Brasileira</div></div>
+        <div class="wm"><h1>EMPRESA</h1><div class="tagbr">Seleção Brasileira</div></div>
         <div class="foot">
-          <span class="ribbon">Seleção 3LACKD · 2026</span>
+          <span class="ribbon">Seleção EMPRESA · 2026</span>
           <div class="stamp">Verde e amarelo no coração — Edição de Colecionador</div>
         </div>
       </div>`);
@@ -200,7 +200,7 @@ const EventosAlbum: React.FC = () => {
       // contracapa
       pages.push(`<div class="backcover"><div class="rays"></div>
         <div class="clg">${crest(118)}</div>
-        <h3>SELEÇÃO 3LACKD</h3><div class="jp">2 0 2 6</div>
+        <h3>SELEÇÃO EMPRESA</h3><div class="jp">2 0 2 6</div>
         <div class="ln">O álbum oficial da torcida que veste o verde e amarelo com orgulho. Obrigado por colecionar com a gente!</div>
         <div class="barcode"></div>
       </div>`);
@@ -393,7 +393,7 @@ const EventosAlbum: React.FC = () => {
         <div class="lb-in">
           <div class="lb-photo"><img src="${photoSrc(f.id)}" alt="${esc(f.nome)}" style="object-position:${esc(obj)}"><div class="holo"></div></div>
           ${f.craque ? '<div class="craquetag">★ Craque</div>' : ''}
-          <div class="lb-bar">${f.numero ? `<div class="num">${esc(f.numero)}</div>` : ''}<span class="ps">${esc(f.posicao)}</span><div class="nk">${esc(f.nome)}</div><div class="tm">Seleção 3LACKD · 2026</div></div>
+          <div class="lb-bar">${f.numero ? `<div class="num">${esc(f.numero)}</div>` : ''}<span class="ps">${esc(f.posicao)}</span><div class="nk">${esc(f.nome)}</div><div class="tm">Seleção EMPRESA · 2026</div></div>
         </div>
       </div>
       <div class="lb-hint">Toque fora para fechar</div>`;

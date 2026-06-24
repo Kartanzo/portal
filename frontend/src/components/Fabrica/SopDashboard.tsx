@@ -681,7 +681,7 @@ const SopDashboard: React.FC = () => {
 
             let logoB64: string | null = null;
             try {
-                const resp = await fetch('/Logo-3LACKD.png');
+                const resp = await fetch('/Logo-EMPRESA.png');
                 const blob = await resp.blob();
                 logoB64 = await new Promise<string>((res) => {
                     const r = new FileReader();
@@ -701,7 +701,7 @@ const SopDashboard: React.FC = () => {
                 // faixa vermelha topo (canto)
                 doc.setFillColor(...ACCENT);
                 doc.rect(0, 0, W, 3, 'F');
-                // cartao do logo com fundo vermelho — logo 3LACKD e branco e precisa
+                // cartao do logo com fundo vermelho — logo EMPRESA e branco e precisa
                 // do contraste para aparecer (mesmo padrao do site)
                 if (logoB64) {
                     doc.setFillColor(...ACCENT);
@@ -724,7 +724,7 @@ const SopDashboard: React.FC = () => {
                 doc.line(10, H - 10, W - 10, H - 10);
                 doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
                 doc.setTextColor(120, 120, 120);
-                doc.text('3LACKD — Torre de Controle S&OP (Setor Fabrica)', 10, H - 5);
+                doc.text('EMPRESA — Torre de Controle S&OP (Setor Fabrica)', 10, H - 5);
                 doc.text(`Pagina ${pageNum} de ${totalPages}`, W - 10, H - 5, { align: 'right' });
                 doc.setFillColor(...ACCENT);
                 doc.triangle(W, H, W - 10, H, W, H - 10, 'F');

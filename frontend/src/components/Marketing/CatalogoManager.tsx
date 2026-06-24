@@ -27,7 +27,7 @@ type Modelo = {
 type ModeloResumo = { id: string; nome: string; titulo_pagina: string; ano: number; oficial: boolean; produtos_incluidos: number };
 
 function userId(): string {
-  try { const s = sessionStorage.getItem('blackd_user'); if (s) { const p = JSON.parse(s); if (p?.id) return String(p.id); } } catch { /* */ }
+  try { const s = sessionStorage.getItem('empresa_user'); if (s) { const p = JSON.parse(s); if (p?.id) return String(p.id); } } catch { /* */ }
   return '';
 }
 function authHeaders(): Record<string, string> { const id = userId(); return id ? { 'user-id': id } : {}; }
@@ -231,7 +231,7 @@ const Modelos: React.FC<{ colunas: ColunaBase[]; showToast: any; confirm: any }>
 
   async function criarModelo() {
     try {
-      const r = await api.post('/catalogo/modelos', { nome: 'Novo catálogo', titulo_pagina: 'Catálogo 3LACKD 2026', ano: 2026 });
+      const r = await api.post('/catalogo/modelos', { nome: 'Novo catálogo', titulo_pagina: 'Catálogo EMPRESA 2026', ano: 2026 });
       await carregarModelos();
       await abrirModelo(r.data.id);
       showToast('Modelo criado. Ajuste o nome e a configuração e clique em Salvar.', 'success');
@@ -420,7 +420,7 @@ const Modelos: React.FC<{ colunas: ColunaBase[]; showToast: any; confirm: any }>
           <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Capas</h3>
           <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 cursor-pointer">
             <input type="checkbox" className="accent-blue-600" checked={modelo.usar_capa_padrao} onChange={e => setCampoModelo({ usar_capa_padrao: e.target.checked })} />
-            Usar capa padrão (arte vermelha "Catálogo 3LACKD {modelo.ano}")
+            Usar capa padrão (arte vermelha "Catálogo EMPRESA {modelo.ano}")
           </label>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

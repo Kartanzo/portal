@@ -1,5 +1,5 @@
 """
-Script ONE-SHOT: carrega as 13 fotos iniciais do álbum "Seleção 3LACKD"
+Script ONE-SHOT: carrega as 13 fotos iniciais do álbum "Seleção EMPRESA"
 direto no banco (BYTEA).
 
 Pré-requisitos:
@@ -74,7 +74,7 @@ def main():
             print(f"  ✓ ({ordem}/{len(arquivos)}) {path.name} — {len(data)} bytes — {mime}")
 
         conn.commit()
-        print(f"\n✅ {inseridos} fotos inseridas no álbum 'Seleção 3LACKD'")
+        print(f"\n✅ {inseridos} fotos inseridas no álbum 'Seleção EMPRESA'")
     except Exception as e:
         conn.rollback()
         print(f"❌ Erro: {e}")

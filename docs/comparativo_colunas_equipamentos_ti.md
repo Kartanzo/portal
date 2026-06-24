@@ -40,7 +40,7 @@ Legenda: ✅ existe · 🟡 parcial/aproximado · ❌ não existe
 | Bios TAG | ❌ |
 | MAC Rede Cabeada | ❌ |
 | MAC Rede Sem Fio | ❌ |
-| 3LACKD Domain | ❌ |
+| EMPRESA Domain | ❌ |
 | Hard Drive | ❌ |
 | Capacidade | ❌ |
 | Hardware | 🟡 tipo |
@@ -109,13 +109,13 @@ Legenda: ✅ existe · 🟡 parcial/aproximado · ❌ não existe
 | Tipo de Carregador | ❌ |
 | Chip | ❌ |
 
-## 5. NUMEROS_VIVO_3LACKD (linhas/chips telefônicos)
+## 5. NUMEROS_VIVO_EMPRESA (linhas/chips telefônicos)
 ### aba ATIVO
 | Coluna planilha | Página |
 |---|---|
 | USUARIO | ✅ colaborador |
 | SETOR | 🟡 localizacao |
-| APARELHO_3LACKD | 🟡 modelo/descricao |
+| APARELHO_EMPRESA | 🟡 modelo/descricao |
 | OBS | ✅ observacoes |
 | NUMERO | ❌ |
 | registro_vivo | ❌ |

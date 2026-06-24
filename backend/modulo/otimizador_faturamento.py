@@ -55,7 +55,7 @@ FAT_SQL_ESTOQUE = """
 SELECT CODIGO_ITEM AS Codigo,
        SUM(CASE WHEN CODIGO_LOCAL LIKE '13%' THEN SAFE_CAST(DISPONIVEL AS FLOAT64) ELSE 0 END) AS Disponivel,
        SUM(CASE WHEN CODIGO_LOCAL LIKE '13%' THEN SAFE_CAST(RESERVA AS FLOAT64) ELSE 0 END) AS Reserva
-FROM `projeto-rpa-blackd-2023.VENDAS.estoque_logistica`
+FROM `projeto-rpa-empresa-2023.VENDAS.estoque_logistica`
 WHERE CODIGO_ITEM IS NOT NULL
 GROUP BY 1
 """
@@ -90,7 +90,7 @@ WITH aberto AS (
   SELECT RAZAO, EMISSAO, ENTREGA, EMISSAO_ORIGINAL, PEDIDO, DESCRICAO_PRODUTO,
          CODIGO_PRODUTO, TOTAL_ITEM, QUANTIDADE, DESC_TIPODOCUMENTO,
          STATUS_PEDIDO, SITUACAO, GERENCIA_REGIONAL
-  FROM `projeto-rpa-blackd-2023.VENDAS.Metas_por_faturamento`
+  FROM `projeto-rpa-empresa-2023.VENDAS.Metas_por_faturamento`
   WHERE STATUS_PEDIDO IN (""" + in_clause + """)
     AND DESC_TIPODOCUMENTO IS NOT NULL
     AND DESC_TIPODOCUMENTO NOT IN ('DISPLAY','CAMPANHAS','RAPEL','MOSTRUARIO','None','CONTRATOS')
@@ -100,7 +100,7 @@ faturado_parcial AS (
   -- Pedidos onde EXISTEM linhas STATUS=5 (faturadas) E linhas STATUS=1/4 (abertas) coexistindo.
   -- Sinal de SALDO: parte já foi faturada, sobrou item em aberto (ex: MBK-0166197).
   SELECT DISTINCT PEDIDO
-  FROM `projeto-rpa-blackd-2023.VENDAS.Metas_por_faturamento`
+  FROM `projeto-rpa-empresa-2023.VENDAS.Metas_por_faturamento`
   WHERE STATUS_PEDIDO = '5' AND PEDIDO IN (SELECT PEDIDO FROM aberto)
 )
 SELECT a.*, (fp.PEDIDO IS NOT NULL) AS tem_saldo_parcial
@@ -1960,7 +1960,7 @@ FAT_SQL_HISTORICO = """
 SELECT NOTA_FISCAL, NOTA_FISCAL_EMISSAO, PEDIDO, RAZAO, CODIGO_PRODUTO,
        DESCRICAO_PRODUTO, QUANTIDADE, TOTAL_ITEM, STATUS_PEDIDO,
        DESC_TIPODOCUMENTO, EMISSAO, ENTREGA
-FROM `projeto-rpa-blackd-2023.VENDAS.Metas_por_faturamento`
+FROM `projeto-rpa-empresa-2023.VENDAS.Metas_por_faturamento`
 WHERE STATUS_PEDIDO IN ('5','6')
   AND NOTA_FISCAL_EMISSAO IS NOT NULL
   AND DESC_TIPODOCUMENTO IS NOT NULL

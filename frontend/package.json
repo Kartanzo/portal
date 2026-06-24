@@ -1,5 +1,5 @@
 {
-  "name": "blackd-data-portal",
+  "name": "empresa-data-portal",
   "private": true,
   "version": "1.7.2",
   "type": "module",
@@ -23,7 +23,7 @@
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.562.0",
-    "blackd-data-portal": "file:../Portal de chamado",
+    "empresa-data-portal": "file:../Portal de chamado",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-pageflip": "^2.0.3",

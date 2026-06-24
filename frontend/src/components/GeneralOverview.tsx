@@ -224,7 +224,7 @@ const GeneralOverview: React.FC<GeneralOverviewProps> = ({ user }) => {
     ];
 
     const handleInterSectorStatusClick = (status: string) => {
-        sessionStorage.setItem('blackd_is_ticket_filters', JSON.stringify({ query: '', status, priority: '', targetSector: '' }));
+        sessionStorage.setItem('empresa_is_ticket_filters', JSON.stringify({ query: '', status, priority: '', targetSector: '' }));
         navigate('/inter-sector-tickets');
     };
 

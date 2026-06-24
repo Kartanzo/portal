@@ -1,6 +1,6 @@
-# Portal de Chamado — 3LACKD Data Portal
+# Portal de Chamado — EMPRESA Data Portal
 
-Sistema corporativo completo para gerenciamento de tickets de suporte, planejamento estratégico, acompanhamento de implementações e relatórios financeiros da empresa 3LACKD.
+Sistema corporativo completo para gerenciamento de tickets de suporte, planejamento estratégico, acompanhamento de implementações e relatórios financeiros da empresa EMPRESA.
 
 ---
 
@@ -46,7 +46,7 @@ Crie um arquivo `.env.local` na raiz do projeto (frontend) e configure as variá
 ```json
 {
   "DB_HOST": "localhost",
-  "DB_NAME": "blackd_portal",
+  "DB_NAME": "empresa_portal",
   "DB_USER": "postgres",
   "DB_PASSWORD": "sua_senha",
   "DB_PORT": "5432",

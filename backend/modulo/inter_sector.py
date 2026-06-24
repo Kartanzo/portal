@@ -236,7 +236,7 @@ def create_inter_sector_ticket(
                   <a href="{FRONTEND_URL.rstrip('/')}/#/inter-sector-tickets/{new_id}" style="background:#dc2626;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:bold;">Ver Chamado</a>
                 </div>
               </div>
-              <div style="background:#f4f4f4;padding:16px;text-align:center;font-size:12px;color:#999;">Sistema de Chamados 3LACKD</div>
+              <div style="background:#f4f4f4;padding:16px;text-align:center;font-size:12px;color:#999;">Sistema de Chamados EMPRESA</div>
             </div>
             """
             # Notifica setor de destino
@@ -401,7 +401,7 @@ def update_inter_sector_ticket(
                   <a href="{FRONTEND_URL.rstrip('/')}/#/inter-sector-tickets/{ticket_id}" style="background:#dc2626;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:bold;">Ver Chamado</a>
                 </div>
               </div>
-              <div style="background:#f4f4f4;padding:16px;text-align:center;font-size:12px;color:#999;">Sistema de Chamados 3LACKD</div>
+              <div style="background:#f4f4f4;padding:16px;text-align:center;font-size:12px;color:#999;">Sistema de Chamados EMPRESA</div>
             </div>
             """
             # Notifica setor de destino
@@ -586,7 +586,7 @@ def add_inter_sector_ticket_update(
                   <a href="{FRONTEND_URL.rstrip('/')}/#/inter-sector-tickets/{ticket_id}" style="background:#dc2626;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:bold;">Ver Chamado</a>
                 </div>
               </div>
-              <div style="background:#f4f4f4;padding:16px;text-align:center;font-size:12px;color:#999;">Sistema de Chamados 3LACKD</div>
+              <div style="background:#f4f4f4;padding:16px;text-align:center;font-size:12px;color:#999;">Sistema de Chamados EMPRESA</div>
             </div>
             """
             # Notifica setor de destino
@@ -698,7 +698,7 @@ def forward_inter_sector_ticket(
                   <a href="{FRONTEND_URL.rstrip('/')}/#/inter-sector-tickets/{ticket_id}" style="background:#dc2626;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:bold;">Ver Chamado</a>
                 </div>
               </div>
-              <div style="background:#f4f4f4;padding:16px;text-align:center;font-size:12px;color:#999;">Sistema de Chamados 3LACKD</div>
+              <div style="background:#f4f4f4;padding:16px;text-align:center;font-size:12px;color:#999;">Sistema de Chamados EMPRESA</div>
             </div>
             """
             background_tasks.add_task(

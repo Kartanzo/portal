@@ -6,7 +6,7 @@ import { MobileLandscapeHint } from '../ui/MobileLandscapeHint';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { aplicarLayoutBlackd, temaTabelaBlackd } from '../exportUtils';
+import { aplicarLayoutEmpresa, temaTabelaEmpresa } from '../exportUtils';
 
 const RelatorioDRE: React.FC<{ user: any }> = ({ user }) => {
     const [data, setData] = useState<any[]>([]);
@@ -98,10 +98,10 @@ const RelatorioDRE: React.FC<{ user: any }> = ({ user }) => {
 
     const handleExportPDF = async () => {
         const doc = new jsPDF('l', 'mm', 'a3');
-        const layout = await aplicarLayoutBlackd(doc, {
+        const layout = await aplicarLayoutEmpresa(doc, {
             titulo: 'DRE Comparativo',
             subtitulo: `Departamento: ${department}`,
-            rodapeTexto: '3LACKD — DRE Comparativo (Financeiro)',
+            rodapeTexto: 'EMPRESA — DRE Comparativo (Financeiro)',
         });
 
         const headers = [['Grupo', 'Conta', 'Descrição']];
@@ -126,8 +126,8 @@ const RelatorioDRE: React.FC<{ user: any }> = ({ user }) => {
             head: headers,
             body: body,
             startY: 35,
-            ...temaTabelaBlackd,
-            styles: { ...temaTabelaBlackd.styles, fontSize: 7 },
+            ...temaTabelaEmpresa,
+            styles: { ...temaTabelaEmpresa.styles, fontSize: 7 },
         });
         layout.finalizar();
         doc.save(`DRE_Comparativo_${department}.pdf`);
@@ -230,10 +230,10 @@ const RelatorioDRE: React.FC<{ user: any }> = ({ user }) => {
 
     const exportDrillDownToPDF = async () => {
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        const layout = await aplicarLayoutBlackd(doc, {
+        const layout = await aplicarLayoutEmpresa(doc, {
             titulo: 'Detalhamento DRE Comparativo',
             subtitulo: `${drillDownParams.rowLabel} - ${drillDownParams.month} (${drillDownParams.source})`,
-            rodapeTexto: '3LACKD — DRE Comparativo (Financeiro)',
+            rodapeTexto: 'EMPRESA — DRE Comparativo (Financeiro)',
         });
 
         const head = [['Conta', 'Descrição', 'Departamento', 'Valor']];
@@ -248,8 +248,8 @@ const RelatorioDRE: React.FC<{ user: any }> = ({ user }) => {
             head: head,
             body: body,
             startY: 35,
-            ...temaTabelaBlackd,
-            styles: { ...temaTabelaBlackd.styles, fontSize: 7 },
+            ...temaTabelaEmpresa,
+            styles: { ...temaTabelaEmpresa.styles, fontSize: 7 },
         });
         layout.finalizar();
         doc.save(`Detalhamento_${drillDownParams.rowLabel}_${drillDownParams.month}.pdf`);

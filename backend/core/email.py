@@ -158,7 +158,7 @@ def generate_email_html(email_title, recipient_name, friendly_id, ticket_title, 
             </div>
         </div>
         <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #e0e0e0;">
-            <p style="margin: 0; margin-bottom: 8px;">Sistema de Chamados 3LACKD</p>
+            <p style="margin: 0; margin-bottom: 8px;">Sistema de Chamados EMPRESA</p>
             <p style="margin: 0;">Este é um e-mail automático, por favor não responda.</p>
         </div>
     </div>
@@ -360,7 +360,7 @@ def send_action_plan_email(bg_tasks, subject, title, lines, recipients_users_ids
                     </div>
                 </div>
                 <div style="background-color: #f8f8f8; padding: 16px; text-align: center; font-size: 12px; color: #888888; border-top: 1px solid #e0e0e0;">
-                    <p style="margin: 0;">Sistema de Gestão 3LACKD</p>
+                    <p style="margin: 0;">Sistema de Gestão EMPRESA</p>
                 </div>
             </div>
             """
@@ -434,7 +434,7 @@ def send_implementation_schedule_email(bg_tasks, subject, title, lines, recipien
                     </div>
                 </div>
                 <div style="background-color: #f8f8f8; padding: 16px; text-align: center; font-size: 12px; color: #888888; border-top: 1px solid #e0e0e0;">
-                    <p style="margin: 0;">Sistema de Gestão 3LACKD</p>
+                    <p style="margin: 0;">Sistema de Gestão EMPRESA</p>
                 </div>
             </div>
             """

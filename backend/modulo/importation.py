@@ -509,7 +509,7 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
         # Sales History (Switching to VendasHistoricasDois - historicodevendasdois)
         query_vendas = f"""
             SELECT EMISSAO, CODIGO_PRODUTO, QUANTIDADE, TOTAL_ITEM
-            FROM `projeto-rpa-blackd-2023.VENDAS.VendasHistoricasDois`
+            FROM `projeto-rpa-empresa-2023.VENDAS.VendasHistoricasDois`
             WHERE SAFE_CAST(SUBSTR(EMISSAO, 1, 10) AS DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 24 MONTH)
               AND DESC_TIPODOCUMENTO NOT IN ('BONIFICACAO', 'SAC', 'MOSTRUARIO', 'DISPLAY', 'CAMPANHAS', 'TROCA')
               AND EMPRESA = 'STAR_'
@@ -529,7 +529,7 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
                 SUM(SAFE_CAST(REPLACE(TOTAL_ITEM, ',', '.') AS FLOAT64)) as TOTAL_VALOR,
                 SUM(SAFE_CAST(QUANTIDADE AS FLOAT64)) as TOTAL_QTD,
                 MAX(DESCRICAO_PRODUTO) as DESCRIPTION
-            FROM `projeto-rpa-blackd-2023.VENDAS.VendasHistoricasDois`
+            FROM `projeto-rpa-empresa-2023.VENDAS.VendasHistoricasDois`
             WHERE SAFE_CAST(SUBSTR(EMISSAO, 1, 10) AS DATE) >= DATE_SUB(CURRENT_DATE(), INTERVAL 4 MONTH)
               AND DESC_TIPODOCUMENTO NOT IN ('BONIFICACAO', 'SAC', 'MOSTRUARIO', 'DISPLAY', 'CAMPANHAS', 'TROCA')
               AND EMPRESA = 'STAR_'
@@ -583,7 +583,7 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
             codes_str = ", ".join([f"'{c}'" for c in itens_monitorados])
             query_descricao = f"""
                 SELECT TRIM(CODIGO_PRODUTO) as CODIGO_PRODUTO, MAX(DESCRICAO_PRODUTO) as DESCRICAO_PRODUTO
-                FROM `projeto-rpa-blackd-2023.VENDAS.VendasHistoricasDois`
+                FROM `projeto-rpa-empresa-2023.VENDAS.VendasHistoricasDois`
                 WHERE TRIM(CODIGO_PRODUTO) IN ({codes_str})
                 GROUP BY TRIM(CODIGO_PRODUTO)
             """
@@ -622,7 +622,7 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
         # Stock
         query_estoque = """
             SELECT codigo_do_item as CODIGO_ITEM, quantidade as DISPONIVEL, descricao_do_item as DESC_ESTOQUE
-            FROM `projeto-rpa-blackd-2023.VENDAS.View_SaldoFisicoPorItem`
+            FROM `projeto-rpa-empresa-2023.VENDAS.View_SaldoFisicoPorItem`
             WHERE codigo_do_local_estoque_ LIKE '13%'
         """
         df_estoque = client.query(query_estoque).to_dataframe(create_bqstorage_client=False)
@@ -633,7 +633,7 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
         # Parameters
         df_params = pd.read_excel(FILE_PARAMETROS)
         df_params.columns = [str(c).strip() for c in df_params.columns]
-        df_params['Codigo 3LACKD'] = df_params['Codigo 3LACKD'].astype(str).str.strip()
+        df_params['Codigo EMPRESA'] = df_params['Codigo EMPRESA'].astype(str).str.strip()
 
         # Override Peso Bruto (G.W) e adiciona Peso Liquido via planilha (fonte oficial)
         _sheet_pesos = _load_sheet_parametros_importacao()
@@ -650,12 +650,12 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
                 return v if v else None
             def _pliq_from_sheet(cod):
                 return _sheet_pesos.get(_norm_code(cod), {}).get('peso_liquido', 0.0)
-            _gw_sheet = df_params['Codigo 3LACKD'].apply(_gw_from_sheet)
+            _gw_sheet = df_params['Codigo EMPRESA'].apply(_gw_from_sheet)
             if 'G.W' in df_params.columns:
                 df_params['G.W'] = _gw_sheet.fillna(df_params['G.W'])
             else:
                 df_params['G.W'] = _gw_sheet.fillna(0.0)
-            df_params['Peso_Liquido_Unit'] = df_params['Codigo 3LACKD'].apply(_pliq_from_sheet)
+            df_params['Peso_Liquido_Unit'] = df_params['Codigo EMPRESA'].apply(_pliq_from_sheet)
         else:
             if 'Peso_Liquido_Unit' not in df_params.columns:
                 df_params['Peso_Liquido_Unit'] = 0.0
@@ -669,12 +669,12 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
                 df_params[col] = pd.to_numeric(df_params[col], errors='coerce').fillna(0)
         
         # Identify non-numeric columns to keep from Order List 108
-        other_cols = ['Codigo 3LACKD', 'PHOTO NO', 'Barcode Number', 'DESCRIPTION', 'NAME', 'REMARK', 'OBS', 'NCM', 'UNIT']
+        other_cols = ['Codigo EMPRESA', 'PHOTO NO', 'Barcode Number', 'DESCRIPTION', 'NAME', 'REMARK', 'OBS', 'NCM', 'UNIT']
         keep_cols = [c for c in other_cols if c in df_params.columns] + [c for c in numeric_cols if c in df_params.columns]
         if 'Peso_Liquido_Unit' in df_params.columns and 'Peso_Liquido_Unit' not in keep_cols:
             keep_cols.append('Peso_Liquido_Unit')
         
-        df_params_clean = df_params[keep_cols].drop_duplicates(subset='Codigo 3LACKD')
+        df_params_clean = df_params[keep_cols].drop_duplicates(subset='Codigo EMPRESA')
 
         # Merge Logic
         df_proj = pd.DataFrame(proj_qty)
@@ -732,7 +732,7 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
         
         df_main['Status'] = df_main.apply(alert_status, axis=1)
         # Merge Parameters earlier to use UNIT/CTN in Sugestão_Compra
-        df_main = df_main.merge(df_params_clean, left_on='Código', right_on='Codigo 3LACKD', how='left').drop('Codigo 3LACKD', axis=1, errors='ignore')
+        df_main = df_main.merge(df_params_clean, left_on='Código', right_on='Codigo EMPRESA', how='left').drop('Codigo EMPRESA', axis=1, errors='ignore')
         # Fill NaN: strings with '', numbers with 0
         str_cols_params = ['DESCRIPTION', 'NAME', 'PHOTO NO', 'Barcode Number', 'REMARK', 'OBS', 'NCM', 'UNIT']
         for col in str_cols_params:
@@ -855,9 +855,9 @@ async def calculate_importation(request: ImportationCalculateRequest, user_id: O
             "labels": ["Mês 1", "Mês 2", "Mês 3"],
             "qty": [int(df_proj['Mes_1'].sum()), int(df_proj['Mes_2'].sum()), int(df_proj['Mes_3'].sum())],
             "yuan": [
-                round((df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo 3LACKD')['Mes_1'] * df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo 3LACKD')['PRICE']).sum(), 2),
-                round((df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo 3LACKD')['Mes_2'] * df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo 3LACKD')['PRICE']).sum(), 2),
-                round((df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo 3LACKD')['Mes_3'] * df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo 3LACKD')['PRICE']).sum(), 2)
+                round((df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo EMPRESA')['Mes_1'] * df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo EMPRESA')['PRICE']).sum(), 2),
+                round((df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo EMPRESA')['Mes_2'] * df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo EMPRESA')['PRICE']).sum(), 2),
+                round((df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo EMPRESA')['Mes_3'] * df_proj.merge(df_params_clean, left_on='Código', right_on='Codigo EMPRESA')['PRICE']).sum(), 2)
             ]
         }
 

@@ -580,7 +580,7 @@ const ImportacaoV2: React.FC<{ user: any }> = ({ user }) => {
                 .replace(/[\s_/.\-º°]/g, '');
             const CODIGO_ALIAS = new Set([
                 'itemno', 'item', 'codigo', 'cod', 'cdigo',
-                'codigoblackd', 'codblackd', 'cdigoblackd',
+                'codigoempresa', 'codempresa', 'cdigoempresa',
                 'codprod', 'codproduto', 'codigoproduto', 'cdigoproduto',
                 'sku', 'codsku', 'productcode', 'codproduct',
             ]);
@@ -605,7 +605,7 @@ const ImportacaoV2: React.FC<{ user: any }> = ({ user }) => {
                     .filter(Boolean).join('\n');
                 throw new Error(
                     `Não encontrei colunas de código + quantidade nas 3 primeiras linhas. ` +
-                    `Cabeçalhos esperados: código (ITEM NO / Código / Codigo 3LACKD / SKU / ...) e quantidade (QTY / Quantidade / Qtd / ...).\n\n${headersVistos}`
+                    `Cabeçalhos esperados: código (ITEM NO / Código / Codigo EMPRESA / SKU / ...) e quantidade (QTY / Quantidade / Qtd / ...).\n\n${headersVistos}`
                 );
             }
 
@@ -1153,7 +1153,7 @@ ${containersHtml}
         }
     }, [itensVisiveis, qtdMeses, modo, leadDefault, nivelDefault, threshold, codigos, overrides]);
 
-    // PDF — segue padrão visual da Torre de Controle S&OP (logo 3LACKD, faixa vermelha, header/footer)
+    // PDF — segue padrão visual da Torre de Controle S&OP (logo EMPRESA, faixa vermelha, header/footer)
     const exportPdf = useCallback(async () => {
         if (itensVisiveis.length === 0) { toast.showToast('Nada para exportar', 'info'); return; }
         const ACCENT: [number, number, number] = [231, 76, 60];
@@ -1163,10 +1163,10 @@ ${containersHtml}
         const W = doc.internal.pageSize.getWidth();
         const H = doc.internal.pageSize.getHeight();
 
-        // Logo 3LACKD (mesmo fetch do SOP)
+        // Logo EMPRESA (mesmo fetch do SOP)
         let logoB64: string | null = null;
         try {
-            const resp = await fetch('/Logo-3LACKD.png');
+            const resp = await fetch('/Logo-EMPRESA.png');
             const blob = await resp.blob();
             logoB64 = await new Promise<string>((res) => {
                 const r = new FileReader();
@@ -1200,7 +1200,7 @@ ${containersHtml}
             doc.line(10, H - 10, W - 10, H - 10);
             doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
             doc.setTextColor(120, 120, 120);
-            doc.text('3LACKD — Importação v2 (Setor Logística / Comex)', 10, H - 5);
+            doc.text('EMPRESA — Importação v2 (Setor Logística / Comex)', 10, H - 5);
             doc.text(`Página ${pageNum} de ${totalPages}`, W - 10, H - 5, { align: 'right' });
             doc.setFillColor(...ACCENT);
             doc.triangle(W, H, W - 10, H, W, H - 10, 'F');

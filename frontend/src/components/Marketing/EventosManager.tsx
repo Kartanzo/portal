@@ -38,7 +38,7 @@ const EventosManager: React.FC = () => {
 
   function authHeaders(): Record<string, string> {
     try {
-      const saved = sessionStorage.getItem('blackd_user');
+      const saved = sessionStorage.getItem('empresa_user');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed?.id) return { 'user-id': String(parsed.id) };
@@ -212,14 +212,14 @@ const EventosManager: React.FC = () => {
           {enviando ? 'Enviando…' : 'Selecionar fotos'}
         </label>
         <div className="mt-3 text-xs text-slate-500">
-          As fotos vão pro álbum "Seleção 3LACKD" na aba Eventos
+          As fotos vão pro álbum "Seleção EMPRESA" na aba Eventos
         </div>
       </div>
 
       {/* Lista */}
       <div className="mb-2 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-          Álbum: Seleção 3LACKD ({fotos.length} foto{fotos.length === 1 ? '' : 's'})
+          Álbum: Seleção EMPRESA ({fotos.length} foto{fotos.length === 1 ? '' : 's'})
         </h2>
         <div className="text-xs text-slate-500">Arraste o cartão para reordenar</div>
       </div>

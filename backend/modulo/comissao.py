@@ -669,7 +669,7 @@ def buscar_drive(body: BuscarDriveBody, user_id: Optional[str] = Depends(get_use
 # ─────────────────────────────────────────────
 #  Envio de e-mails de comissão (1 por vendedor aprovado, com PDF anexo)
 # ─────────────────────────────────────────────
-CC_FIXOS = ["comissao@blackd.com.br", "vendas@blackd.com.br"]
+CC_FIXOS = ["comissao@empresa.com.br", "vendas@empresa.com.br"]
 
 
 def _gmail_creds():
@@ -705,7 +705,7 @@ def _corpo_email(nome, comissao, premio, total):
         f"Comissão: R$ {_valor_br(comissao)}\n"
         f"Premiação: R$ {_valor_br(premio)}\n"
         f"TOTAL A RECEBER: R$ {_valor_br(total)}\n\n"
-        f"****** FAVOR ENVIAR NOTA FISCAL PARA: comissao@blackd.com.br***********"
+        f"****** FAVOR ENVIAR NOTA Usuário 30 PARA: comissao@empresa.com.br***********"
     )
 
 

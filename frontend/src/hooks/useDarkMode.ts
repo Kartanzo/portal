@@ -5,13 +5,13 @@ function applyDark(next: boolean) {
   next
     ? document.documentElement.classList.add('dark')
     : document.documentElement.classList.remove('dark');
-  localStorage.setItem('blackd_dark_mode', String(next));
+  localStorage.setItem('empresa_dark_mode', String(next));
 }
 
 export function useDarkMode() {
   // Lê localStorage na inicialização — classe já aplicada pelo script em index.html
   const [isDark, setIsDark] = useState(() => {
-    return localStorage.getItem('blackd_dark_mode') === 'true';
+    return localStorage.getItem('empresa_dark_mode') === 'true';
   });
 
   const toggle = (x?: number, y?: number) => {

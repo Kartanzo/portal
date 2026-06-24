@@ -18,10 +18,10 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:3000",
-    "https://portal.blackd.com.br",
-    "http://portal.blackd.com.br",
-    "https://portal.tecnologia-blackd.com.br",
-    "http://portal.tecnologia-blackd.com.br",
+    "https://portal.empresa.com.br",
+    "http://portal.empresa.com.br",
+    "https://portal.tecnologia-empresa.com.br",
+    "http://portal.tecnologia-empresa.com.br",
     "http://localhost:5173",
 ]
 
@@ -41,7 +41,7 @@ def get_password_hash(password):
 # BigQuery — credenciais lidas de GOOGLE_CREDENTIALS_JSON (env var com JSON inline) via importation.py/sac.py
 # Este path aqui é fallback opcional somente se GOOGLE_APPLICATION_CREDENTIALS estiver explicitamente setada
 CREDENTIALS_PATH = os.getenv('GOOGLE_APPLICATION_CREDENTIALS', '')
-PROJECT_ID = 'projeto-rpa-blackd-2023'
+PROJECT_ID = 'projeto-rpa-empresa-2023'
 
 # Importation constants
 IMPORTED_ITEM_CODES = [

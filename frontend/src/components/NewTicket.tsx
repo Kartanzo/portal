@@ -144,7 +144,7 @@ const NewTicket: React.FC<NewTicketProps> = ({ user: loggedUser }) => {
     setLoading(true);
 
     try {
-      const userFromStorage = JSON.parse(sessionStorage.getItem('blackd_user') || '{}');
+      const userFromStorage = JSON.parse(sessionStorage.getItem('empresa_user') || '{}');
       const user = loggedUser || userFromStorage;
 
       if (!user || !user.id) {

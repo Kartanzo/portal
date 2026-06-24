@@ -139,11 +139,11 @@ def notify_setor(setor: str, title: str, message: str, ticket_id: int, conn):
 def send_email_externo(email_contato: str, protocolo: str, status: str, mensagem_extra: str = ""):
     """Envia e-mail HTML para o contato externo."""
     status_display = STATUS_EXTERNO_MAP.get(status, status)
-    subject = f"[SAC 3LACKD] Atualização do chamado {protocolo}"
+    subject = f"[SAC EMPRESA] Atualização do chamado {protocolo}"
     body = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="background: #1a1a2e; padding: 20px; text-align: center;">
-        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">Portal 3LACKD — SAC</h1>
+        <h1 style="color: #ffffff; margin: 0; font-size: 20px;">Portal EMPRESA — SAC</h1>
       </div>
       <div style="padding: 30px; background: #f8f9fa;">
         <h2 style="color: #333; font-size: 18px;">Atualização do seu chamado</h2>
@@ -155,7 +155,7 @@ def send_email_externo(email_contato: str, protocolo: str, status: str, mensagem
         <p style="color:#888; font-size:13px;">Este é um e-mail automático. Para dúvidas, responda a este chamado pelo portal.</p>
       </div>
       <div style="padding: 15px; text-align: center; color: #999; font-size: 12px; border-top: 1px solid #e0e0e0;">
-        Portal de Chamados — 3LACKD
+        Portal de Chamados — EMPRESA
       </div>
     </div>
     """
@@ -175,8 +175,8 @@ _cache_lock = threading.Lock()
 _SAC_CACHE_FILE = os.path.join(os.path.dirname(__file__), "..", "sac_produtos_cache.json")
 
 
-_BQ_KEY_FILE = os.path.join(os.path.dirname(__file__), "..", "projeto-rpa-blackd-2023-16b15891f73c.json")
-_BQ_TABLE = "projeto-rpa-blackd-2023.VENDAS.view_info_ie"
+_BQ_KEY_FILE = os.path.join(os.path.dirname(__file__), "..", "projeto-rpa-empresa-2023-16b15891f73c.json")
+_BQ_TABLE = "projeto-rpa-empresa-2023.VENDAS.view_info_ie"
 
 
 def _refresh_produtos_cache():
@@ -200,7 +200,7 @@ def _refresh_produtos_cache():
                 key_path,
                 scopes=["https://www.googleapis.com/auth/bigquery"],
             )
-        client = bigquery.Client(credentials=credentials, project="projeto-rpa-blackd-2023")
+        client = bigquery.Client(credentials=credentials, project="projeto-rpa-empresa-2023")
         query = f"""
             SELECT
                 TRIM(CAST(codigo_do_item AS STRING)) AS codigo,
@@ -328,7 +328,7 @@ def _bq_client():
         sa_info, scopes=["https://www.googleapis.com/auth/bigquery"]
     )
     from google.cloud import bigquery as bq
-    return bq.Client(credentials=credentials, project="projeto-rpa-blackd-2023")
+    return bq.Client(credentials=credentials, project="projeto-rpa-empresa-2023")
 
 def _fmt_rows(rows):
     def fmt_date(v): return v.isoformat() if v else None
@@ -354,7 +354,7 @@ _BQ_SELECT = """
            EMISSAO, ENTREGA, NOTA_FISCAL_EMISSAO,
            DESC_TIPODOCUMENTO, DESCRICAO_SEGMENTO,
            NOTA_FISCAL
-    FROM `projeto-rpa-blackd-2023.VENDAS.Controle_de_logistica_carteira`
+    FROM `projeto-rpa-empresa-2023.VENDAS.Controle_de_logistica_carteira`
     WHERE NOTA_FISCAL IS NOT NULL AND NOTA_FISCAL != ''
 """
 

@@ -854,7 +854,7 @@ const ActionPlan: React.FC<ActionPlanProps> = ({ user }) => {
           </button>
 
           <button
-            onClick={() => exportActionPlanToExcel(filteredItems, 'Plano_Estrategico_Blackd.xlsx')}
+            onClick={() => exportActionPlanToExcel(filteredItems, 'Plano_Estrategico_Empresa.xlsx')}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow transition-all flex items-center gap-2"
           >
             <Download className="w-4 h-4" /> EXCEL

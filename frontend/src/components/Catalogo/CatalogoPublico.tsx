@@ -11,7 +11,7 @@ import { ChevronLeft, ChevronRight, BookOpen, Maximize2, Minimize2, Download, X,
 import HTMLFlipBook from 'react-pageflip';
 import { api } from '../../app_api';
 
-const LOGO = '/Logo-3LACKD.png';
+const LOGO = '/Logo-EMPRESA.png';
 // Tamanho-base do design da página (a ficha foi desenhada nesta escala). O conteúdo é
 // renderizado neste tamanho fixo e escalado via transform p/ caber em `dims`, assim
 // fontes/paddings encolhem junto com a página (igual ao zoom de um PDF) — evita que em
@@ -44,7 +44,7 @@ type Pagina =
   | { type: 'produto'; produto: ProdutoPub; colunas: string[] };
 
 function userId(): string {
-  try { const s = sessionStorage.getItem('blackd_user'); if (s) { const p = JSON.parse(s); if (p?.id) return String(p.id); } } catch { /* */ }
+  try { const s = sessionStorage.getItem('empresa_user'); if (s) { const p = JSON.parse(s); if (p?.id) return String(p.id); } } catch { /* */ }
   return '';
 }
 function imgUrl(id: string): string {
@@ -74,7 +74,7 @@ const Pagina: React.FC<{ page: Pagina; number: number }> = ({ page, number }) =>
     return (
       <div className="w-full h-full flex flex-col items-center justify-center p-12 text-white"
            style={{ background: 'linear-gradient(135deg,#7f1d1d,#dc2626)' }}>
-        <img src={LOGO} alt="3LACKD" className="h-20 mb-10" style={{ filter: 'brightness(0) invert(1)' }} />
+        <img src={LOGO} alt="EMPRESA" className="h-20 mb-10" style={{ filter: 'brightness(0) invert(1)' }} />
         <h2 className="text-3xl font-bold text-center font-serif">{page.titulo}</h2>
         <p className="text-white/80 text-center mt-5 whitespace-pre-line text-base leading-relaxed">{page.subtitulo}</p>
       </div>
@@ -123,7 +123,7 @@ const Pagina: React.FC<{ page: Pagina; number: number }> = ({ page, number }) =>
           </div>
         </div>
         <div className="mt-auto pt-2 flex justify-between items-center text-[9px] text-gray-400 border-t border-gray-100">
-          <span>3LACKD — Ficha Técnica</span>
+          <span>EMPRESA — Ficha Técnica</span>
           <span>Página {number}</span>
         </div>
       </div>
@@ -156,7 +156,7 @@ function gerarPDFde(o: Oficial) {
         <h2>${esc(p.descricao || p.codigo_produto)}</h2>
         <h3>Ficha Técnica</h3>
         <table>${linhas}</table>
-        <div class="rodape"><span>3LACKD — ${esc(o.titulo_pagina)}</span><span>Página ${i + 1}</span></div>
+        <div class="rodape"><span>EMPRESA — ${esc(o.titulo_pagina)}</span><span>Página ${i + 1}</span></div>
       </div>
     </section>`);
   });

@@ -3,14 +3,14 @@
 > Ambiente alvo inicial: **homolog** (`portal_chamado_homolog`, backend 8010, frontend 8090). Só vai para produção após validação.
 
 ## 1. Objetivo
-Permitir que o Marketing **monte catálogos de produtos** (estilo revista/flipbook — baseado na skill `blackd-catalogo-produtos`) configurando título, capas e produtos, e marque uma **versão oficial**. A página pública de Catálogo passa a refletir a versão oficial.
+Permitir que o Marketing **monte catálogos de produtos** (estilo revista/flipbook — baseado na skill `empresa-catalogo-produtos`) configurando título, capas e produtos, e marque uma **versão oficial**. A página pública de Catálogo passa a refletir a versão oficial.
 
 ## 2. Onde entra (DECIDIDO)
 Espelhando o padrão de "Eventos" (público em `/eventos`; config em `/marketing/eventos`):
 - **Menu — abaixo de "Eventos"**: novo item **"Catálogo"** → rota pública `/catalogo` (flipbook da versão oficial), módulo `catalogo_view`. Link no `Sidebar.tsx` logo após o NavLink de `/eventos` (linha ~106).
 - **Dentro de Marketing**: nova **aba "Catálogo"** em `MarketingPage.tsx` (ao lado de "Eventos") com as configurações/dados/fotos, módulo `catalogo_admin`.
 - Novo componente `frontend/src/components/Marketing/CatalogoManager.tsx` (configurador).
-- Nova página `frontend/src/components/Catalogo/CatalogoPublico.tsx` (flipbook adaptado da skill `blackd-catalogo-produtos`) na rota `/catalogo`.
+- Nova página `frontend/src/components/Catalogo/CatalogoPublico.tsx` (flipbook adaptado da skill `empresa-catalogo-produtos`) na rota `/catalogo`.
 
 ## Decisões confirmadas pelo usuário
 1. **Base**: importar com botão "Sincronizar" → tabela `catalogo_base_produtos`.
@@ -21,7 +21,7 @@ Espelhando o padrão de "Eventos" (público em `/eventos`; config em `/marketing
 Fonte: `https://docs.google.com/spreadsheets/d/1CjXWXXd0rk5Bxnrt_DTGt9wmRk0AYbOzJWPtDBUlghw`
 
 - **842 produtos**, cabeçalho de **2 níveis** (linha 1 = grupo, linha 2 = nome da coluna). **75 colunas**.
-- Grupos: **MARKETING** (cols 1–18), **PCP** (19–27), **LOGÍSTICA - EMBALAGEM INDIVIDUAL** (28–32), **LOGÍSTICA - EMBALAGEM MASTER** (33–41), **FISCAL** (42–45), **FISCAL - ICMS 18% / 12% / 7%** (46–74).
+- Grupos: **MARKETING** (cols 1–18), **PCP** (19–27), **LOGÍSTICA - EMBALAGEM INDIVIDUAL** (28–32), **LOGÍSTICA - EMBALAGEM MASTER** (33–41), **Usuário 30** (42–45), **Usuário 30 - ICMS 18% / 12% / 7%** (46–74).
 - Chave: **`CÓDIGO PRODUTO`** (col 0) + **`DESCRIÇÃO DO PRODUTO`** (col 1).
 - STATUS: ATIVO 701, INATIVO 120, ESTUDO 14, vazio 7.
 - FAMÍLIA: Assentos Sanitários 320, Acessibilidade e Prevenção 153, Acessórios p/ Banheiro 108, Utilidades 112, Linha Hidráulica 91, Orthopauher 47, Agrícola 10, Componentes 1.
@@ -33,7 +33,7 @@ Colunas mais úteis p/ ficha técnica do catálogo (grupo MARKETING/PCP): DESCRI
 1. Aba "Catálogo" no Marketing.
 2. Config geral: **título da página**, **ano** (default 2026), **subtítulo**.
 3. **Seletor de colunas** (botão antes da configuração): marca quais colunas da base aparecem na ficha técnica — **aplica a TODOS os produtos** do modelo. (armazenado em `colunas_ficha`).
-4. **Capas**: capa inicial (pré-salva: arte vermelha "Catálogo 3LACKD **2026**"), índice e capa final — todas opcionais/uploadáveis.
+4. **Capas**: capa inicial (pré-salva: arte vermelha "Catálogo EMPRESA **2026**"), índice e capa final — todas opcionais/uploadáveis.
 5. **Produtos**: adicionar produto = upload de foto + selecionar **CÓDIGO** ou **DESCRIÇÃO** (autocomplete da base). Ficha preenchida automaticamente com as colunas selecionadas.
 6. **Flag de inclusão**: marcar quais produtos entram no catálogo.
 7. **Salvar modelo** + opção **"versão oficial"**. Só 1 oficial por vez.
@@ -55,7 +55,7 @@ CREATE TABLE catalogo_imagem (
 CREATE TABLE catalogo_modelo (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   nome VARCHAR(120) NOT NULL,
-  titulo_pagina VARCHAR(160) NOT NULL DEFAULT 'Catálogo 3LACKD 2026',
+  titulo_pagina VARCHAR(160) NOT NULL DEFAULT 'Catálogo EMPRESA 2026',
   subtitulo TEXT,
   ano INTEGER NOT NULL DEFAULT 2026,
   oficial BOOLEAN NOT NULL DEFAULT FALSE,
@@ -110,7 +110,7 @@ CREATE TABLE catalogo_base_produtos (
 - Guard de rota no frontend + `check_module_permission` no backend.
 
 ## 8. Página pública
-Adaptar `CatalogoPage` da skill `blackd-catalogo-produtos`: em vez de `catalogPages` fixo, consumir `GET /catalogo/oficial` e montar capa(s) + páginas de produto (ficha = colunas selecionadas). Capa padrão = arte vermelha com ano 2026.
+Adaptar `CatalogoPage` da skill `empresa-catalogo-produtos`: em vez de `catalogPages` fixo, consumir `GET /catalogo/oficial` e montar capa(s) + páginas de produto (ficha = colunas selecionadas). Capa padrão = arte vermelha com ano 2026.
 
 ## 9. Ordem de execução sugerida
 1. Migrations (homolog) + permissões.

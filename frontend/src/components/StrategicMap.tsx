@@ -18,7 +18,7 @@ const StrategicMap: React.FC<{ user: any }> = ({ user }) => {
                 <div className="h-[100px] w-full bg-white flex justify-end items-center pr-12 pt-8 relative z-20">
                     <div className="flex flex-col items-end mr-[60px] bg-white z-20">
                         <h1 className="text-5xl font-black text-[#E1251B] italic tracking-tighter" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>
-                            3LACKD
+                            EMPRESA
                         </h1>
                         <p className="text-[#E1251B] text-sm font-semibold tracking-wide">
                             Detalhes que fazem a diferença.

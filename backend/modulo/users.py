@@ -498,7 +498,7 @@ def create_user(user: UserPasswordUpdate):
                 body = f"""
                 <html>
                   <body>
-                    <h2>Bem-vindo(a) de volta ao Portal 3LACKD, {user.name}!</h2>
+                    <h2>Bem-vindo(a) de volta ao Portal EMPRESA, {user.name}!</h2>
                     <p>Sua conta foi reativada com sucesso.</p>
                     <p>Você já pode acessar o sistema utilizando seu email ({user.email}).</p>
                     <p><a href="{portal_link}" style="background-color: #dc2626; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Acessar Portal</a></p>
@@ -535,7 +535,7 @@ def create_user(user: UserPasswordUpdate):
             body = f"""
             <html>
               <body>
-                <h2>Bem-vindo(a) ao Portal 3LACKD, {user.name}!</h2>
+                <h2>Bem-vindo(a) ao Portal EMPRESA, {user.name}!</h2>
                 <p>Seu cadastro foi realizado com sucesso.</p>
                 <p>Você já pode acessar o sistema utilizando seu email ({user.email}).</p>
                 <p><a href="{portal_link}" style="background-color: #dc2626; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Acessar Portal</a></p>

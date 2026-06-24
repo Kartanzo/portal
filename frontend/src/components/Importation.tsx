@@ -263,7 +263,7 @@ const Importation: React.FC<ImportationProps> = ({ user }) => {
         try {
             const formData = new FormData();
             formData.append('file', file);
-            const savedUserStr = sessionStorage.getItem('blackd_user');
+            const savedUserStr = sessionStorage.getItem('empresa_user');
             const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
             const userId = user?.id || savedUser?.id || localStorage.getItem('user_id') || '00000000-0000-0000-0000-000000000000';
             const res = await api.uploadImportationExcel(formData, userId);

@@ -6,7 +6,7 @@ import { toast } from '../ui/Toaster';
 import { MobileLandscapeHint } from '../ui/MobileLandscapeHint';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { aplicarLayoutBlackd } from '../exportUtils';
+import { aplicarLayoutEmpresa } from '../exportUtils';
 
 interface RelatorioOrcadoRealizadoProps {
     user: any;
@@ -450,10 +450,10 @@ const RelatorioOrcadoRealizado: React.FC<RelatorioOrcadoRealizadoProps> = ({ use
     const exportDrillDownToPDF = async () => {
         if (!drillDownData.length) return;
         const doc = new jsPDF('p', 'mm', 'a4');
-        const layout = await aplicarLayoutBlackd(doc, {
+        const layout = await aplicarLayoutEmpresa(doc, {
             titulo: 'Detalhamento da DRE (Orçado x Realizado)',
             subtitulo: `${drillDownParams.rowLabel} - ${drillDownParams.month} · Departamento: ${department}`,
-            rodapeTexto: '3LACKD — Orçado x Realizado (Financeiro)',
+            rodapeTexto: 'EMPRESA — Orçado x Realizado (Financeiro)',
         });
 
         const head = [['Conta', 'Descrição', 'Grupo', 'Valor', '%']];
@@ -530,10 +530,10 @@ const RelatorioOrcadoRealizado: React.FC<RelatorioOrcadoRealizadoProps> = ({ use
 
     const handleExportPDF = async () => {
         const doc = new jsPDF('l', 'mm', 'a3');
-        const layout = await aplicarLayoutBlackd(doc, {
+        const layout = await aplicarLayoutEmpresa(doc, {
             titulo: 'Relatório Orçado x Realizado',
             subtitulo: `Departamento: ${department}`,
-            rodapeTexto: '3LACKD — Orçado x Realizado (Financeiro)',
+            rodapeTexto: 'EMPRESA — Orçado x Realizado (Financeiro)',
         });
         const headers = [['Conta', 'Descrição']];
         columnGroups.forEach(g => {

@@ -426,7 +426,7 @@ def _ensure_sac_tables():
         conn.rollback()
         print(f"inter_sector_ticket_participants table error: {e}")
 
-    # Eventos — álbum de fotos "Seleção 3LACKD" (storage base64/BYTEA)
+    # Eventos — álbum de fotos "Seleção EMPRESA" (storage base64/BYTEA)
     try:
         cur = conn.cursor()
         cur.execute("""

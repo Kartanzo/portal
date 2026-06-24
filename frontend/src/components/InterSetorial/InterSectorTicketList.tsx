@@ -8,7 +8,7 @@ import { Search, Filter, X, Plus, ChevronUp, ChevronDown, ChevronRight, MoreHori
 import { formatDateBR } from '../dateUtils';
 import ConfirmationModal from '../ConfirmationModal';
 
-const IS_FILTER_KEY = 'blackd_is_ticket_filters';
+const IS_FILTER_KEY = 'empresa_is_ticket_filters';
 
 const PRIORITY_STYLE: Record<string, string> = {
   'Urgente': 'bg-red-100 text-red-800 border-red-200',

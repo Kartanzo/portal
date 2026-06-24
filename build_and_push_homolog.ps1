@@ -1,11 +1,11 @@
 # ============================================================
 # Build e Push — Ambiente de HOMOLOGAÇÃO
-# Repositório: aplicativosblackd/evolution-qrcode
+# Repositório: aplicativosempresa/evolution-qrcode
 # Tags: *-homolog
 # ============================================================
 
 $VERSION = "1.7.5-homolog"
-$REPO = "aplicativosblackd/evolution-qrcode"
+$REPO = "aplicativosempresa/evolution-qrcode"
 
 # --- BACKEND ---
 Write-Host ">>> [HOMOLOG] Construindo Backend..."
