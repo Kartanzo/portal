@@ -13,17 +13,26 @@ Crie um serviço de **Postgres** no EasyPanel (ou use um banco gerenciado). Anot
 - **Source:** este repositório, pasta `backend/` (Dockerfile: `backend/Dockerfile`).
 - **Porta interna:** `8000`.
 - **Nome do serviço:** use **`homolog-portal-back`** (importante — ver passo 3).
-- **Variáveis de ambiente (obrigatórias):**
+- **Variáveis de ambiente (obrigatórias).** Há duas formas — escolha UMA:
 
-| Variável | Valor |
-|---|---|
-| `DB_HOST` | host interno do Postgres |
-| `DB_PORT` | `5432` |
-| `DB_NAME` | nome do banco |
-| `DB_USER` | usuário do Postgres |
-| `DB_PASSWORD` | senha do Postgres |
-| `DB_SCHEMA` | `portal_chamado` |
-| `SEED_DUMMY` | `1` |
+  **Forma A — `DATABASE_URL` (recomendada no EasyPanel):**
+  | Variável | Valor |
+  |---|---|
+  | `DATABASE_URL` | `postgres://user:senha@host:5432/nome_do_banco?sslmode=disable` |
+  | `DB_SCHEMA` | `portal_demo`  ← schema NOVO (a app cria; não toca nos existentes) |
+  | `SEED_DUMMY` | `1` |
+
+  **Forma B — variáveis separadas:**
+  | Variável | Valor |
+  |---|---|
+  | `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` / `DB_PASSWORD` | dados do Postgres |
+  | `DB_SCHEMA` | `portal_demo` |
+  | `SEED_DUMMY` | `1` |
+
+  > ⚠️ Sempre defina `DB_SCHEMA` com um schema **novo** (ex.: `portal_demo`). NÃO use
+  > `portal_chamado`/`portal_chamado_homolog` se o banco for compartilhado — a app criaria
+  > tabelas e dados dummy dentro dos dados reais. O **banco** (`DB_NAME`/dbname da URL) precisa
+  > **já existir**; a app cria só o **schema** e as tabelas dentro dele.
 
 - **Opcionais** (pode deixar em branco / não criar — o app roda sem elas, pois removemos as fontes externas):
   `GEMINI_API_KEY`, `GOOGLE_APPLICATION_CREDENTIALS`, `GOOGLE_CREDENTIALS_JSON`, `GOOGLE_SA_JSON`,
