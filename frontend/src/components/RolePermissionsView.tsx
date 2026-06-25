@@ -84,6 +84,7 @@ const RolePermissionsView: React.FC = () => {
         { id: 'otimizador_faturamento', label: 'Otimizador de Faturamento', group: 'Fábrica' },
         { id: 'cadastro_maquinas', label: 'Cadastro de Máquinas', group: 'Fábrica' },
         { id: 'programacao', label: 'Programação', group: 'Fábrica' },
+        { id: 'producao_dashboard', label: 'Dashboard de Produção', group: 'Fábrica' },
         { id: 'eventos_album', label: 'Eventos — Álbum (visível a todos)', group: 'Marketing' },
         { id: 'eventos_admin', label: 'Eventos — Gerenciar', group: 'Marketing' },
         { id: 'marketing_ficha_tecnica', label: 'Ficha Técnica — Gerenciar PDFs', group: 'Marketing' },
