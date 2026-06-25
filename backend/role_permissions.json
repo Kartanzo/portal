@@ -155,6 +155,9 @@
         "can_view": false,
         "can_edit": false
       },
+      "producao_dashboard": {
+        "can_view": false
+      },
       "eventos_album": {
         "can_view": false
       },
@@ -329,6 +332,9 @@
         "can_view": false,
         "can_edit": false
       },
+      "producao_dashboard": {
+        "can_view": false
+      },
       "eventos_album": {
         "can_view": false
       },
@@ -430,6 +436,9 @@
       "programacao": {
         "can_view": false,
         "can_edit": false
+      },
+      "producao_dashboard": {
+        "can_view": false
       },
       "eventos_album": {
         "can_view": false
@@ -596,6 +605,9 @@
       "programacao": {
         "can_view": false,
         "can_edit": false
+      },
+      "producao_dashboard": {
+        "can_view": false
       },
       "eventos_album": {
         "can_view": false

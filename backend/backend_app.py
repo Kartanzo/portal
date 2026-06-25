@@ -21,6 +21,7 @@ from modulo import rh_equipamentos
 from modulo import rh_audit
 from modulo import maquinas
 from modulo import programacao
+from modulo import producao_dashboard
 from modulo import otimizador_faturamento
 from modulo import marketing_ficha_tecnica
 from modulo import tickets, users, action_plans, implementation, inter_sector, sectors, dashboard, financeiro, importation, importation_v2, dre2025, sac, metas_faturamento, sop_dashboard, plano_producao, whatsapp_config, simulador_importacao, eventos, catalogo, comissao, analise_credito
@@ -566,6 +567,7 @@ app.include_router(rh_equipamentos.router)
 app.include_router(rh_audit.router)
 app.include_router(maquinas.router)
 app.include_router(programacao.router)
+app.include_router(producao_dashboard.router)
 app.include_router(otimizador_faturamento.router)
 app.include_router(whatsapp_config.router)
 app.include_router(eventos.router)

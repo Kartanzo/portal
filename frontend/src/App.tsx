@@ -77,6 +77,7 @@ import OtimizadorFaturamento from './components/Fabrica/OtimizadorFaturamento';
 import HistoricoFaturamento from './components/Fabrica/HistoricoFaturamento';
 import CadastroMaquinas from './components/Fabrica/CadastroMaquinas';
 import ProgramacaoPage from './components/Fabrica/ProgramacaoPage';
+import DashboardProducao from './components/Fabrica/DashboardProducao';
 
 // RH / DP — placeholders enquanto as telas reais não existem
 import RhPlaceholder from './components/RH/RhPlaceholder';
@@ -313,6 +314,7 @@ function App() {
                     <Route path="/fabrica/otimizador-faturamento/historico" element={<ProtectedRoute module="otimizador_faturamento"><HistoricoFaturamento /></ProtectedRoute>} />
                     <Route path="/fabrica/cadastro-maquinas" element={<ProtectedRoute module="cadastro_maquinas"><CadastroMaquinas /></ProtectedRoute>} />
                     <Route path="/fabrica/programacao" element={<ProtectedRoute module="programacao"><ProgramacaoPage /></ProtectedRoute>} />
+                    <Route path="/fabrica/dashboard-producao" element={<ProtectedRoute module="producao_dashboard"><DashboardProducao /></ProtectedRoute>} />
 
               {/* RH / DP — placeholders */}
               <Route path="/rh/dashboard" element={<ProtectedRoute module="rh_dashboard"><DashboardRH /></ProtectedRoute>} />

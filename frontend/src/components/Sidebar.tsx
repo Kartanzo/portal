@@ -341,7 +341,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
         )}
 
         {/* ── Fábrica ── */}
-        {(hasPermission('sop_dashboard') || hasPermission('plano_producao') || hasPermission('otimizador_faturamento') || hasPermission('cadastro_maquinas') || hasPermission('programacao')) && (
+        {(hasPermission('sop_dashboard') || hasPermission('plano_producao') || hasPermission('otimizador_faturamento') || hasPermission('cadastro_maquinas') || hasPermission('programacao') || hasPermission('producao_dashboard')) && (
           <SectorGroup label="Fábrica" isCollapsed={mobile ? false : isCollapsed} open={sectorsOpen.fabrica} onToggle={() => toggleSector('fabrica')}>
             <SidebarSection title="Torre S&OP" icon={<Factory style={{width:'14px',height:'14px'}}/>} isCollapsed={mobile ? false : isCollapsed} defaultOpen={mobile} forceOpen={allOpen ? true : undefined}>
               <div className="space-y-1">
@@ -361,6 +361,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
                   <NavLink to="/fabrica/programacao" className={lc} style={mobileStyle} onClick={onClick}>
                     <ClipboardList className={`w-4 h-4 ${iconMargin}`} />
                     {showText && "Programação de Produção"}
+                  </NavLink>
+                )}
+                {hasPermission('producao_dashboard') && (
+                  <NavLink to="/fabrica/dashboard-producao" className={lc} style={mobileStyle} onClick={onClick}>
+                    <LayoutDashboard className={`w-4 h-4 ${iconMargin}`} />
+                    {showText && "Dashboard de Produção"}
                   </NavLink>
                 )}
                 {hasPermission('otimizador_faturamento') && (
@@ -387,7 +393,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
         )}
 
         {/* ── Financeiro ── */}
-        {(hasPermission('financeiro_base_orcado') || hasPermission('financeiro_base_realizado') || hasPermission('financeiro_orcado') || hasPermission('financeiro_orcado_realizado') || hasPermission('financeiro_dre') || hasPermission('financeiro_plano_contas') || hasPermission('financeiro_dre2025')) && (
+        {(hasPermission('financeiro_base_orcado') || hasPermission('financeiro_base_realizado') || hasPermission('financeiro_orcado_realizado') || hasPermission('financeiro_dre') || hasPermission('financeiro_plano_contas') || hasPermission('financeiro_dre2025')) && (
           <SectorGroup label="Financeiro" isCollapsed={mobile ? false : isCollapsed} open={sectorsOpen.financeiro} onToggle={() => toggleSector('financeiro')}>
           <SidebarSection title="Gestão Financeira" icon={<PieChart style={{width:'14px',height:'14px'}}/>} isCollapsed={mobile ? false : isCollapsed} defaultOpen={mobile} forceOpen={allOpen ? true : undefined}>
             <div className="space-y-1">
@@ -401,12 +407,6 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, user, isCollapsed, toggleSi
                 <NavLink to="/financeiro/base-realizado" className={lc} style={mobileStyle} onClick={onClick}>
                   <ClipboardList className={`w-4 h-4 ${iconMargin}`} />
                   {showText && "Base Realizado"}
-                </NavLink>
-              )}
-              {hasPermission('financeiro_orcado') && (
-                <NavLink to="/financeiro/orcado" className={lc} style={mobileStyle} onClick={onClick}>
-                  <BarChart3 className={`w-4 h-4 ${iconMargin}`} />
-                  {showText && "Relatório Orçado"}
                 </NavLink>
               )}
               {hasPermission('financeiro_orcado_realizado') && (
